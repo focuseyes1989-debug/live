@@ -89,8 +89,16 @@ if __name__ == "__main__":
                 errors.append(name)
     if not entries:
         raise SystemExit("All broadcast sources unavailable")
+    output = Path(__file__).with_name("broadcasts.json")
+    prior_live = {}
+    if output.exists():
+        previous = json.loads(output.read_text(encoding="utf-8"))
+        prior_live = {item["id"]: item for item in previous["videos"] if item["state"] == "live"}
+    present = {entry["id"] for entry in entries}
+    entries.extend({**item, "state": "upcoming"} for key, item in prior_live.items() if key not in present)
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
-        checks = [pool.submit(check_broadcast, entry) for entry in entries if entry["state"] != "replay"]
+        checks = [pool.submit(check_broadcast, entry) for entry in entries
+                  if entry["state"] != "replay" or entry["id"] in prior_live]
         for check in checks:
             try:
                 check.result()

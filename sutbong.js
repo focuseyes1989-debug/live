@@ -9,6 +9,14 @@
   let video;
   let hls;
   let attempt = 0;
+  let activeTitle;
+
+  function markActiveMatch() {
+    for (const card of list.children) {
+      if (card.getAttribute('aria-label') === activeTitle) card.setAttribute('aria-current', 'true');
+      else card.removeAttribute('aria-current');
+    }
+  }
 
   function playlist(stream) {
     try {
@@ -30,6 +38,8 @@
   }
 
   async function play(match, preferred) {
+    activeTitle = match.title;
+    markActiveMatch();
     const token = ++attempt;
     hls?.destroy();
     hls = null;
@@ -98,6 +108,8 @@
       hls?.destroy();
       hls = null;
       video = null;
+      activeTitle = undefined;
+      markActiveMatch();
       controls.replaceChildren();
     }
   }).observe(player, {childList: true});
@@ -112,19 +124,28 @@
         status.textContent = 'Sutbong Live ပွဲစာရင်း အသစ်မရသေးပါ။';
         return;
       }
-      status.textContent = feed.matches.length ? feed.matches.length + ' live matches' : 'လက်ရှိ Live ပွဲမရှိပါ။';
+      const count = feed.matches.length;
+      status.textContent = count ? count + (count === 1 ? ' live match' : ' live matches') : 'လက်ရှိ Live ပွဲမရှိပါ။';
       list.replaceChildren(...feed.matches.map(match => {
         const button = document.createElement('button');
         button.className = 'card';
+        const teams = document.createElement('span');
+        teams.className = 'match-teams';
         if (match.home && match.away) {
-          button.append(teamLabel(match.home, match.homeLogo), teamLabel(match.away, match.awayLogo));
+          teams.append(teamLabel(match.home, match.homeLogo), teamLabel(match.away, match.awayLogo));
         } else {
-          button.textContent = match.title;
+          teams.textContent = match.title;
         }
+        const playIcon = document.createElement('span');
+        playIcon.className = 'match-play';
+        playIcon.setAttribute('aria-hidden', 'true');
+        playIcon.textContent = '▶';
+        button.append(teams, playIcon);
         button.setAttribute('aria-label', match.title);
         button.onclick = () => play(match);
         return button;
       }));
+      markActiveMatch();
     } catch {
       status.textContent = 'Sutbong ပွဲစာရင်း ယူမရသေးပါ။';
     } finally {

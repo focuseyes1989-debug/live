@@ -7,17 +7,17 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>KAY LIVE SPORT</title>
 <link rel="icon" href="./icon.png">
-<link rel="stylesheet" href="./style.css?v=13">
-<script src="./app.js?v=6" defer></script>
+<link rel="stylesheet" href="./style.css?v=14">
+<script src="./app.js?v=7" defer></script>
 <script src="./hls.min.js" defer></script>
-<script src="./sutbong.js?v=9" defer></script>
+<script src="./sutbong.js?v=10" defer></script>
 </head>
 <body>
 <header>
 <div class="header-inner">
 <div class="header-brand"><img src="./icon.png" width="40" height="40" alt=""><strong>KAY LIVE <span>SPORT</span></strong></div>
 <div class="header-search"><input id="match-search" type="search" aria-label="Search live and upcoming matches by team or league" placeholder="Search team or league…" aria-controls="sutbong-matches upcoming-matches" autocomplete="off"></div>
-<nav aria-label="Sections"><button id="watch" aria-pressed="true">Watch</button><button id="scores" aria-pressed="false">Scores</button></nav>
+<nav aria-label="Sections"><a id="watch" href="#watch-view" aria-current="page">Watch</a></nav>
 <div class="header-actions"><button id="theme" type="button">Light theme</button><a class="header-download" href="../kay-live-sport/">Download apps</a></div>
 </div>
 </header>
@@ -26,7 +26,7 @@
 <section id="watch-view">
 <div class="watch-layout">
 <dialog class="player-panel" id="player-panel" aria-labelledby="player-title">
-<div class="row player-heading"><h2 id="player-title">Live player</h2><button id="close-player" type="button" autofocus>Close player</button></div>
+<div class="row player-heading"><h2 id="player-title">Live player</h2><button id="close-player" type="button" aria-label="Close player" title="Close player" autofocus><span aria-hidden="true">×</span></button></div>
 <div class="player" id="player"></div>
 <p id="playing" role="status"></p>
 <div id="sutbong-channels" aria-label="Commentary"></div>
@@ -42,11 +42,6 @@
 <div id="upcoming-matches" class="grid"></div>
 </section>
 </div>
-</section>
-<section id="scores-view" hidden>
-<div class="row"><h2>Football scores</h2><button id="refresh">Refresh</button></div>
-<p id="scores-status" role="status"></p>
-<div id="fixtures" class="grid"></div>
 </section>
 </main>
 </body>

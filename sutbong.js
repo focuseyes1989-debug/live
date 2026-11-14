@@ -9,7 +9,6 @@
   const upcomingList = document.getElementById('upcoming-matches');
   const upcomingStatus = document.getElementById('upcoming-status');
   const search = document.getElementById('match-search');
-  const watch = document.getElementById('watch');
   const kickoffFormat = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Yangon', weekday: 'short', day: 'numeric', month: 'short',
     hour: '2-digit', minute: '2-digit'
@@ -47,10 +46,7 @@
     }
   }
 
-  search.addEventListener('input', () => {
-    if (search.value.trim() && watch.getAttribute('aria-pressed') !== 'true') watch.click();
-    filterMatches();
-  });
+  search.addEventListener('input', filterMatches);
 
   function markActiveMatch() {
     for (const card of list.children) {
@@ -145,7 +141,7 @@
     }
   }
 
-  function closePlayer(restoreFocus) {
+  function closePlayer() {
     if (!panel.open) return;
     const selected = list.querySelector('[aria-current="true"]');
     ++attempt;
@@ -160,14 +156,13 @@
     activeTitle = undefined;
     markActiveMatch();
     panel.close();
-    if (restoreFocus) (selected || refresh).focus();
+    (selected || refresh).focus();
   }
-  close.onclick = () => closePlayer(true);
+  close.onclick = closePlayer;
   panel.addEventListener('cancel', event => {
     event.preventDefault();
-    closePlayer(true);
+    closePlayer();
   });
-  document.getElementById('scores').addEventListener('click', () => closePlayer(false));
 
   function renderUpcoming(matches) {
     const fixtures = matches.filter(match => Number.isFinite(match.kickoff) && match.kickoff * 1000 > Date.now());

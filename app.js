@@ -4,7 +4,9 @@ const themeButton = byId('theme');
 const themeKey = 'kay-shared-theme';
 function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
-  themeButton.textContent = theme === 'light' ? 'Dark theme' : 'Light theme';
+  const label = theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
+  themeButton.title = label;
+  themeButton.setAttribute('aria-label', label);
 }
 try {
   const saved = localStorage.getItem(themeKey) ?? localStorage.getItem('kay-download-theme') ?? localStorage.getItem('kay-live-theme');

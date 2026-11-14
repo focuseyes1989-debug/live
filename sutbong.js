@@ -2,6 +2,7 @@
   const player = document.getElementById('player');
   const panel = document.getElementById('player-panel');
   const close = document.getElementById('close-player');
+  const playerTitle = document.getElementById('player-title');
   const playing = document.getElementById('playing');
   const status = document.getElementById('sutbong-status');
   const list = document.getElementById('sutbong-matches');
@@ -57,9 +58,9 @@
     video.playsInline = true;
     const target = video;
     player.replaceChildren(target);
-    panel.hidden = false;
+    playerTitle.textContent = match.title;
+    if (!panel.open) panel.showModal();
     playing.textContent = match.title + ' · Connecting…';
-    panel.scrollIntoView({ block: 'start' });
     try {
       const rooms = await readJson(roomIndex);
       if (token !== attempt) return;
@@ -113,7 +114,7 @@
   }
 
   function closePlayer(restoreFocus) {
-    if (panel.hidden) return;
+    if (!panel.open) return;
     const selected = list.querySelector('[aria-current="true"]');
     ++attempt;
     hls?.destroy();
@@ -126,10 +127,14 @@
     playing.textContent = '';
     activeTitle = undefined;
     markActiveMatch();
-    panel.hidden = true;
+    panel.close();
     if (restoreFocus) (selected || refresh).focus();
   }
   close.onclick = () => closePlayer(true);
+  panel.addEventListener('cancel', event => {
+    event.preventDefault();
+    closePlayer(true);
+  });
   document.getElementById('scores').addEventListener('click', () => closePlayer(false));
 
   function renderUpcoming(matches) {

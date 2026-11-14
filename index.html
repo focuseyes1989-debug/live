@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="my">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="KAY LIVE SPORT football scores and official broadcasts">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>KAY LIVE SPORT</title>
+<link rel="icon" href="./icon.png">
+<link rel="stylesheet" href="./style.css">
+<script src="./app.js" defer></script>
+</head>
+<body>
+<header><img src="./icon.png" width="38" height="38" alt=""><strong>KAY LIVE SPORT</strong><a href="../kay-live-sport/">Download apps</a></header>
+<main>
+<h1>ဘောလုံးပွဲစဉ်များ</h1>
+<nav aria-label="Sections"><button id="watch" aria-pressed="true">Watch</button><button id="scores" aria-pressed="false">Scores</button></nav>
+<section id="watch-view">
+<div class="player" id="player"><p>ကြည့်လိုတဲ့ ထုတ်လွှင့်မှုကို ရွေးပါ</p></div>
+<p id="playing" role="status"></p>
+<div class="row"><h2>Official broadcasts</h2><select id="channel" aria-label="Channel"><option value="">All channels</option><option>Pyone Play Sports</option><option>The AFC Hub</option><option>OFC</option></select></div>
+<p id="broadcast-status" role="status">ထုတ်လွှင့်မှုစာရင်း ယူနေပါတယ်…</p>
+<div id="broadcasts" class="grid"></div>
+</section>
+<section id="scores-view" hidden>
+<div class="row"><h2>Football scores</h2><button id="refresh">Refresh</button></div>
+<p id="scores-status" role="status"></p>
+<div id="fixtures" class="grid"></div>
+</section>
+</main>
+</body>
+</html>

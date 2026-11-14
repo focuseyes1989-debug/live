@@ -124,9 +124,9 @@ body:has(.player-panel[open]) { overflow: hidden; }
 #sutbong-channels:not(:empty) { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 245px), 1fr)); gap: 10px; }
 .matches-panel .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 225px), 1fr)); gap: 12px; }
-.upcoming-card { display: grid; gap: 12px; background: var(--control); }
 .match-kickoff { text-align: center; font-size: .78rem; color: var(--muted); }
 .card { display: block; text-align: left; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow-wrap: anywhere; }
+.card.upcoming-card { display: grid; gap: 12px; }
 #sutbong-matches .card {
   display: grid;
   grid-template-rows: auto 1fr auto;

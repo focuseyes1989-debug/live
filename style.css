@@ -98,8 +98,8 @@ button, select {
 button:hover, button[aria-pressed="true"] { background: var(--selected); border-color: var(--accent); color: var(--accent); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .header-inner nav { display: flex; gap: 4px; }
-.header-inner nav button, #theme { border-color: transparent; background: transparent; color: var(--muted); white-space: nowrap; }
-.header-inner nav button:hover, .header-inner nav button[aria-pressed="true"], #theme:hover {
+#theme { border-color: transparent; background: transparent; color: var(--muted); white-space: nowrap; }
+#watch, #theme:hover {
   color: var(--nav-accent);
   background: var(--nav-search);
 }
@@ -170,8 +170,7 @@ p { color: var(--muted); line-height: 1.6; }
   .header-actions { grid-area: 1 / 2; justify-content: flex-end; gap: 4px; }
   .header-search { grid-area: 2 / 1; width: 100%; }
   .header-inner nav { grid-area: 2 / 2; }
-  .header-inner nav button { flex: 1; }
-  .header-inner nav button, #theme { padding-inline: .5rem; }
+  #theme { padding-inline: .5rem; }
 }
 @media (max-width: 400px) {
   .header-brand { grid-column: 1 / -1; }
@@ -179,3 +178,8 @@ p { color: var(--muted); line-height: 1.6; }
   .header-inner nav { grid-area: 2 / 1; justify-self: start; }
   .header-search { grid-area: 3 / 1 / 4 / -1; }
 }
+
+#watch { padding: .62rem .85rem; border-radius: 9px; font-size: .88rem; font-weight: 600; text-decoration: none; }
+#watch:hover { text-decoration: underline; }
+#watch-view { scroll-margin-top: 145px; }
+#close-player { flex: none; width: 40px; height: 40px; padding: 0; font-size: 1.5rem; line-height: 1; }

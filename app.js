@@ -2,7 +2,6 @@ const byId = id => document.getElementById(id);
 const watch = byId('watch');
 const scores = byId('scores');
 const player = byId('player');
-let broadcastFeed;
 let scoresLoaded = false;
 
 const themeButton = byId('theme');
@@ -46,7 +45,7 @@ function showView(isWatch) {
   byId('scores-view').hidden = isWatch;
   if (!isWatch) {
     const prompt = document.createElement('p');
-    prompt.textContent = 'ကြည့်လိုတဲ့ ထုတ်လွှင့်မှုကို ရွေးပါ';
+    prompt.textContent = 'ကြည့်လိုတဲ့ ပွဲကို ရွေးပါ';
     player.replaceChildren(prompt);
     byId('playing').textContent = '';
     if (!scoresLoaded) refreshScores();
@@ -54,73 +53,6 @@ function showView(isWatch) {
 }
 watch.onclick = () => showView(true);
 scores.onclick = () => showView(false);
-
-function play(item) {
-  const frame = document.createElement('iframe');
-  frame.src = 'https://www.youtube-nocookie.com/embed/' + item.id + '?playsinline=1';
-  frame.title = item.title;
-  frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
-  frame.allowFullscreen = true;
-  frame.referrerPolicy = 'strict-origin-when-cross-origin';
-  player.replaceChildren(frame);
-  byId('playing').textContent = item.title + ' · ' + item.channel;
-  player.scrollIntoView({ block: 'nearest' });
-}
-
-function renderBroadcasts() {
-  if (!broadcastFeed) return;
-  const selected = byId('channel').value;
-  const state = byId('state').value;
-  const valid = broadcastFeed.videos.filter(item => /^[A-Za-z0-9_-]{11}$/.test(item.id));
-  const channels = [...new Set(valid.map(item => item.channel))].sort();
-  byId('channel').replaceChildren(new Option('All channels', ''), ...channels.map(channel => new Option(channel)));
-  byId('channel').value = channels.includes(selected) ? selected : '';
-  const age = Date.now() - Date.parse(broadcastFeed.updated);
-  const fresh = Number.isFinite(age) && age < 90 * 60 * 1000;
-  const items = valid.filter(item => item.state === state && (state !== 'live' || fresh)
-    && (!byId('channel').value || item.channel === byId('channel').value));
-  if (state === 'upcoming') {
-    items.sort((a, b) => (Date.parse(a.starts) || Infinity) - (Date.parse(b.starts) || Infinity));
-  }
-  const status = state === 'live' && !fresh ? 'Live စာရင်း အသစ်မရသေးပါ။'
-    : items.length ? items.length + ' broadcasts'
-    : state === 'live' ? 'တိုက်ရိုက်ထုတ်လွှင့်နေတဲ့ပွဲ မတွေ့သေးပါ။ Upcoming မှာ လာမယ့်ပွဲတွေ ကြည့်နိုင်ပါတယ်။'
-    : 'ရွေးထားတဲ့ channel အတွက် ထုတ်လွှင့်မှု မတွေ့ပါ။';
-  byId('broadcast-status').textContent = status + (broadcastFeed.unavailable?.length ? ' Channel အချို့ရဲ့စာရင်း ယူမရသေးပါ။' : '');
-  byId('broadcasts').replaceChildren(...items.map(item => {
-    const button = document.createElement('button');
-    button.className = 'card';
-    const image = document.createElement('img');
-    image.src = 'https://i.ytimg.com/vi/' + item.id + '/mqdefault.jpg';
-    image.loading = 'lazy';
-    image.alt = '';
-    const title = document.createElement('b');
-    title.textContent = item.title;
-    const label = document.createElement('small');
-    label.textContent = item.channel + ' · ' + (fresh ? ({live:'LIVE', upcoming:'Upcoming', replay:'Replay'}[item.state] || '') : 'Broadcast');
-    if (state === 'upcoming' && Number.isFinite(Date.parse(item.starts))) {
-      label.textContent += ' · ' + new Intl.DateTimeFormat('en-GB', {
-        timeZone: 'Asia/Yangon', dateStyle: 'medium', timeStyle: 'short'
-      }).format(new Date(item.starts)) + ' MMT';
-    }
-    button.append(image, title, label);
-    button.onclick = () => play(item);
-    return button;
-  }));
-}
-
-async function loadBroadcasts() {
-  try {
-    const response = await fetch('./broadcasts.json', {cache: 'no-cache'});
-    if (!response.ok) throw new Error('Feed unavailable');
-    broadcastFeed = await response.json();
-    renderBroadcasts();
-  } catch {
-    byId('broadcast-status').textContent = 'ထုတ်လွှင့်မှုစာရင်း ယူမရသေးပါ။ စာမျက်နှာကို refresh ပြန်လုပ်ပါ။';
-  }
-}
-byId('channel').onchange = renderBroadcasts;
-byId('state').onchange = renderBroadcasts;
 
 async function refreshScores() {
   const status = byId('scores-status');
@@ -163,5 +95,3 @@ async function refreshScores() {
   }
 }
 byId('refresh').onclick = refreshScores;
-loadBroadcasts();
-setInterval(loadBroadcasts, 5 * 60 * 1000);

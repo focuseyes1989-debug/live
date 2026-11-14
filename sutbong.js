@@ -129,19 +129,35 @@
       list.replaceChildren(...feed.matches.map(match => {
         const button = document.createElement('button');
         button.className = 'card';
+        const header = document.createElement('span');
+        header.className = 'match-header';
+        const league = document.createElement('span');
+        league.className = 'match-league';
+        league.textContent = match.league || 'Football';
+        const clock = document.createElement('span');
+        clock.className = 'match-clock';
+        clock.textContent = match.halfTime ? 'HT' : match.clock || 'LIVE';
+        header.append(league, clock);
         const teams = document.createElement('span');
         teams.className = 'match-teams';
+        const hasScore = [match.homeScore, match.awayScore].every(score =>
+          (typeof score === 'number' || typeof score === 'string') && /^\d+$/.test(String(score)));
+        const score = hasScore ? match.homeScore + ' : ' + match.awayScore : '—';
         if (match.home && match.away) {
-          teams.append(teamLabel(match.home, match.homeLogo), teamLabel(match.away, match.awayLogo));
+          const result = document.createElement('strong');
+          result.className = 'match-score';
+          result.textContent = score;
+          teams.append(teamLabel(match.home, match.homeLogo), result, teamLabel(match.away, match.awayLogo));
         } else {
           teams.textContent = match.title;
         }
         const playIcon = document.createElement('span');
         playIcon.className = 'match-play';
         playIcon.setAttribute('aria-hidden', 'true');
-        playIcon.textContent = '▶';
-        button.append(teams, playIcon);
+        playIcon.textContent = '▶  Watch';
+        button.append(header, teams, playIcon);
         button.setAttribute('aria-label', match.title);
+        button.setAttribute('aria-description', [match.league, hasScore ? score : 'Score unavailable', clock.textContent].filter(Boolean).join(', '));
         button.onclick = () => play(match);
         return button;
       }));

@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import datetime, timezone
+from html import unescape
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -12,6 +13,14 @@ def load_matches():
     block = re.search(r"""<script\b[^>]*\bid=["']matches-data["'][^>]*>(.*?)</script>""", html, re.S)
     if not block:
         raise ValueError("Sutbong match list unavailable")
+    cards = re.split(r'<div\b(?=[^>]*\bdata-post-id=["\']\d+["\'])[^>]*\bdata-post-id=["\'](\d+)["\'][^>]*>', html)
+    minutes = {}
+    for key, card in zip(cards[1::2], cards[2::2]):
+        clock = re.search(r'<span class="time-text">([^<]*)</span>', card)
+        if clock:
+            minute = unescape(clock[1]).strip().replace("’", "'")
+            if re.fullmatch(r"\d{1,3}(?:\+\d{0,2})?'", minute):
+                minutes[key] = minute
     matches = []
     seen = set()
     for row in json.loads(block[1]):
@@ -22,7 +31,8 @@ def load_matches():
         if key in seen or not key.isdigit() or not home or not away:
             continue
         channels = {}
-        for anchor in (row.get("match_data") or {}).get("anchors") or []:
+        details = row.get("match_data") or {}
+        for anchor in details.get("anchors") or []:
             channel_id = str(anchor.get("uid") or anchor.get("id") or "")
             if channel_id.isdigit():
                 channels[channel_id] = anchor.get("nickName") or "Commentator"
@@ -35,6 +45,11 @@ def load_matches():
                 "away": away,
                 "homeLogo": row.get("home_logo"),
                 "awayLogo": row.get("away_logo"),
+                "league": details.get("competition_full") or details.get("competition_vi"),
+                "homeScore": row.get("home_score"),
+                "awayScore": row.get("away_score"),
+                "clock": minutes.get(key),
+                "halfTime": str(row.get("status_id")) == "3",
                 "channels": channels,
             })
     return matches

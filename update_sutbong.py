@@ -22,9 +22,11 @@ def load_matches():
             if re.fullmatch(r"\d{1,3}(?:\+\d{0,2})?'", minute):
                 minutes[key] = minute
     matches = []
+    upcoming = []
+    now = int(datetime.now(timezone.utc).timestamp())
     seen = set()
     for row in json.loads(block[1]):
-        if str(row.get("sport_id")) != "1" or str(row.get("is_live")).lower() not in {"1", "true"}:
+        if str(row.get("sport_id")) != "1":
             continue
         key = str(row.get("postid", ""))
         home, away = row.get("home_name"), row.get("away_name")
@@ -32,6 +34,21 @@ def load_matches():
             continue
         channels = {}
         details = row.get("match_data") or {}
+        teams = {
+            "id": key,
+            "title": f"{home} vs {away}",
+            "home": home,
+            "away": away,
+            "homeLogo": row.get("home_logo"),
+            "awayLogo": row.get("away_logo"),
+            "league": details.get("competition_full") or details.get("competition_vi"),
+        }
+        if str(row.get("is_live")).lower() not in {"1", "true"}:
+            kickoff = str(row.get("time", ""))
+            if str(row.get("status_id")) in {"0", "1"} and kickoff.isdigit() and int(kickoff) > now:
+                upcoming.append({**teams, "kickoff": int(kickoff)})
+                seen.add(key)
+            continue
         for anchor in details.get("anchors") or []:
             channel_id = str(anchor.get("uid") or anchor.get("id") or "")
             if channel_id.isdigit():
@@ -39,24 +56,18 @@ def load_matches():
         if channels:
             seen.add(key)
             matches.append({
-                "id": key,
-                "title": f"{home} vs {away}",
-                "home": home,
-                "away": away,
-                "homeLogo": row.get("home_logo"),
-                "awayLogo": row.get("away_logo"),
-                "league": details.get("competition_full") or details.get("competition_vi"),
+                **teams,
                 "homeScore": row.get("home_score"),
                 "awayScore": row.get("away_score"),
                 "clock": minutes.get(key),
                 "halfTime": str(row.get("status_id")) == "3",
                 "channels": channels,
             })
-    return matches
+    return matches, sorted(upcoming, key=lambda match: match["kickoff"])
 
 
 if __name__ == "__main__":
-    matches = load_matches()
-    feed = {"updated": datetime.now(timezone.utc).isoformat(), "matches": matches}
+    matches, upcoming = load_matches()
+    feed = {"updated": datetime.now(timezone.utc).isoformat(), "matches": matches, "upcoming": upcoming}
     Path(__file__).with_name("sutbong-matches.json").write_text(json.dumps(feed, ensure_ascii=False), encoding="utf-8")
-    print(f"{len(matches)} Sutbong live matches")
+    print(f"{len(matches)} Sutbong live matches, {len(upcoming)} upcoming")

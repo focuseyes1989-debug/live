@@ -1,8 +1,16 @@
 (() => {
   const player = document.getElementById('player');
+  const panel = document.getElementById('player-panel');
+  const close = document.getElementById('close-player');
   const playing = document.getElementById('playing');
   const status = document.getElementById('sutbong-status');
   const list = document.getElementById('sutbong-matches');
+  const upcomingList = document.getElementById('upcoming-matches');
+  const upcomingStatus = document.getElementById('upcoming-status');
+  const kickoffFormat = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Yangon', weekday: 'short', day: 'numeric', month: 'short',
+    hour: '2-digit', minute: '2-digit'
+  });
   const controls = document.getElementById('sutbong-channels');
   const refresh = document.getElementById('sutbong-refresh');
   const roomIndex = 'https://biz.vnres.co/api/live/livingRoom';
@@ -43,13 +51,15 @@
     const token = ++attempt;
     hls?.destroy();
     hls = null;
+    controls.replaceChildren();
     video = document.createElement('video');
     video.controls = true;
     video.playsInline = true;
     const target = video;
     player.replaceChildren(target);
+    panel.hidden = false;
     playing.textContent = match.title + ' · Connecting…';
-    player.scrollIntoView({ block: 'nearest' });
+    panel.scrollIntoView({ block: 'start' });
     try {
       const rooms = await readJson(roomIndex);
       if (token !== attempt) return;
@@ -102,17 +112,47 @@
     }
   }
 
-  new MutationObserver(() => {
-    if (video && !player.contains(video)) {
-      ++attempt;
-      hls?.destroy();
-      hls = null;
-      video = null;
-      activeTitle = undefined;
-      markActiveMatch();
-      controls.replaceChildren();
-    }
-  }).observe(player, {childList: true});
+  function closePlayer(restoreFocus) {
+    if (panel.hidden) return;
+    const selected = list.querySelector('[aria-current="true"]');
+    ++attempt;
+    hls?.destroy();
+    hls = null;
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    player.replaceChildren();
+    controls.replaceChildren();
+    playing.textContent = '';
+    activeTitle = undefined;
+    markActiveMatch();
+    panel.hidden = true;
+    if (restoreFocus) (selected || refresh).focus();
+  }
+  close.onclick = () => closePlayer(true);
+  document.getElementById('scores').addEventListener('click', () => closePlayer(false));
+
+  function renderUpcoming(matches) {
+    const fixtures = matches.filter(match => Number.isFinite(match.kickoff) && match.kickoff * 1000 > Date.now());
+    upcomingStatus.textContent = fixtures.length ? fixtures.length + ' upcoming' : 'လာမယ့်ပွဲ မတွေ့သေးပါ။';
+    upcomingList.replaceChildren(...fixtures.map(match => {
+      const card = document.createElement('article');
+      card.className = 'card upcoming-card';
+      const league = document.createElement('span');
+      league.className = 'match-league';
+      league.textContent = match.league || 'Football';
+      const teams = document.createElement('div');
+      teams.className = 'match-teams';
+      teams.append(teamLabel(match.home, match.homeLogo), teamLabel(match.away, match.awayLogo));
+      const time = document.createElement('time');
+      const kickoff = new Date(match.kickoff * 1000);
+      time.className = 'match-kickoff';
+      time.dateTime = kickoff.toISOString();
+      time.textContent = kickoffFormat.format(kickoff) + ' MMT';
+      card.append(league, teams, time);
+      return card;
+    }));
+  }
 
   async function load() {
     refresh.disabled = true;
@@ -121,9 +161,12 @@
       const age = Date.now() - Date.parse(feed.updated);
       if (!Number.isFinite(age) || age > 45 * 60 * 1000) {
         list.replaceChildren();
+        upcomingList.replaceChildren();
+        upcomingStatus.textContent = 'လာမယ့်ပွဲစာရင်း အသစ်မရသေးပါ။';
         status.textContent = 'Sutbong Live ပွဲစာရင်း အသစ်မရသေးပါ။';
         return;
       }
+      renderUpcoming(feed.upcoming || []);
       const count = feed.matches.length;
       status.textContent = count ? count + (count === 1 ? ' live match' : ' live matches') : 'လက်ရှိ Live ပွဲမရှိပါ။';
       list.replaceChildren(...feed.matches.map(match => {
@@ -164,6 +207,7 @@
       markActiveMatch();
     } catch {
       status.textContent = 'Sutbong ပွဲစာရင်း ယူမရသေးပါ။';
+      upcomingStatus.textContent = 'လာမယ့်ပွဲစာရင်း ယူမရသေးပါ။';
     } finally {
       refresh.disabled = false;
     }

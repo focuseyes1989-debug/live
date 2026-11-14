@@ -51,7 +51,9 @@ button:hover, button[aria-pressed="true"] { background: var(--selected); border-
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 nav { display: inline-flex; gap: 5px; margin-bottom: 18px; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 4px; }
 nav button { min-width: 88px; }
-.watch-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(400px, 1fr); gap: 16px; align-items: start; }
+.watch-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.player-panel { grid-column: 1 / -1; width: 100%; max-width: 960px; justify-self: center; }
+.row.player-heading { margin: 0 0 10px; }
 .player-panel, .matches-panel { min-width: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 12px; }
 .player { aspect-ratio: 16 / 9; min-height: 170px; background: #080e18; border-radius: 11px; display: grid; place-items: center; overflow: hidden; }
 .player iframe, .player video { width: 100%; height: 100%; border: 0; }
@@ -60,7 +62,9 @@ nav button { min-width: 88px; }
 #playing:empty { display: none; }
 #sutbong-channels:not(:empty) { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 245px), 1fr)); gap: 10px; }
-#sutbong-matches { grid-template-columns: repeat(auto-fit, minmax(min(100%, 225px), 1fr)); gap: 12px; }
+.matches-panel .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 225px), 1fr)); gap: 12px; }
+.upcoming-card { display: grid; gap: 12px; background: var(--control); }
+.match-kickoff { text-align: center; font-size: .78rem; color: var(--muted); }
 .card { display: block; text-align: left; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow-wrap: anywhere; }
 #sutbong-matches .card {
   display: grid;
@@ -90,14 +94,11 @@ nav button { min-width: 88px; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 20px; }
 .row h2 { margin-inline-end: auto; }
 .matches-panel .row { margin: 0 0 10px; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
-#sutbong-status { margin: 4px 0 0; font-size: .78rem; }
+#sutbong-status, #upcoming-status { margin: 4px 0 0; font-size: .78rem; }
 #sutbong-refresh:disabled { cursor: wait; opacity: .65; }
 .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-inline-end: 3px; background: var(--live); }
 p { color: var(--muted); line-height: 1.6; }
 [hidden] { display: none !important; }
-@media (min-width: 901px) {
-  .player-panel { position: sticky; top: 16px; }
-}
 @media (max-width: 900px) {
   .watch-layout { grid-template-columns: minmax(0, 1fr); }
   .header-inner { flex-wrap: wrap; gap: 8px; }

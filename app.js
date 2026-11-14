@@ -1,7 +1,6 @@
 const byId = id => document.getElementById(id);
 const watch = byId('watch');
 const scores = byId('scores');
-const player = byId('player');
 let scoresLoaded = false;
 
 const themeButton = byId('theme');
@@ -44,10 +43,6 @@ function showView(isWatch) {
   byId('watch-view').hidden = !isWatch;
   byId('scores-view').hidden = isWatch;
   if (!isWatch) {
-    const prompt = document.createElement('p');
-    prompt.textContent = 'ကြည့်လိုတဲ့ ပွဲကို ရွေးပါ';
-    player.replaceChildren(prompt);
-    byId('playing').textContent = '';
     if (!scoresLoaded) refreshScores();
   }
 }

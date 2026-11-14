@@ -19,6 +19,7 @@
   let video;
   let hls;
   let attempt = 0;
+  let stopSource = () => {};
   let activeTitle;
   let feedReady = false;
   let liveStale = false;
@@ -79,6 +80,7 @@
     activeTitle = match.title;
     markActiveMatch();
     const token = ++attempt;
+    stopSource();
     hls?.destroy();
     hls = null;
     controls.replaceChildren();
@@ -95,6 +97,10 @@
       if (token !== attempt) return;
       const routes = new Map(rooms.map(room => [String(room.id), playlist(room.stream)]));
       const channels = Object.entries(match.channels).filter(([id]) => routes.get(id));
+      if (!channels.length) {
+        playing.textContent = match.title + ' · လက်ရှိ ထုတ်လွှင့်နေတဲ့ source မရှိသေးပါ။';
+        return;
+      }
       if (preferred) channels.sort(([a], [b]) => Number(b === preferred) - Number(a === preferred));
       controls.replaceChildren(...channels.map(([id, name]) => {
         const button = document.createElement('button');
@@ -105,21 +111,44 @@
       }));
       function tryChannel(index) {
         if (token !== attempt) return;
+        stopSource();
         hls?.destroy();
         hls = null;
         if (index >= channels.length) {
-          playing.textContent = match.title + ' · Stream မရသေးပါ။ ပြန်ရွေးပြီး စမ်းပါ။';
+          playing.textContent = match.title + ' · ရနိုင်တဲ့ source အားလုံးကို စမ်းပြီးပါပြီ။ Stream မရသေးပါ။';
           return;
         }
         const [id, name] = channels[index];
         for (const button of controls.children) button.setAttribute('aria-pressed', button.dataset.channel === id);
         const source = routes.get(id);
-        const next = () => tryChannel(index + 1);
-        target.onplaying = () => {
-          if (token === attempt) playing.textContent = match.title + ' · LIVE · ' + name;
+        playing.textContent = match.title + ' · ' + (index ? 'Trying another source…' : 'Connecting…') + ' · ' + name;
+        let active = true;
+        let timer;
+        const next = () => {
+          if (active && token === attempt) tryChannel(index + 1);
         };
+        const startTimer = () => {
+          clearTimeout(timer);
+          timer = setTimeout(next, 12000);
+        };
+        stopSource = () => {
+          active = false;
+          clearTimeout(timer);
+          target.onplaying = target.onwaiting = target.onerror = null;
+        };
+        target.onerror = next;
+        target.onplaying = () => {
+          clearTimeout(timer);
+          playing.textContent = match.title + ' · LIVE · ' + name;
+        };
+        target.onwaiting = () => { if (!target.paused) startTimer(); };
+        startTimer();
         const start = () => target.play().catch(error => {
-          if (token === attempt && error.name === 'NotAllowedError') playing.textContent = match.title + ' · Play နှိပ်ပါ';
+          if (!active || token !== attempt) return;
+          if (error.name === 'NotAllowedError') {
+            clearTimeout(timer);
+            playing.textContent = match.title + ' · Play နှိပ်ပါ';
+          } else if (error.name !== 'AbortError') next();
         });
         if (target.canPlayType('application/vnd.apple.mpegurl')) {
           target.onerror = next;
@@ -133,6 +162,7 @@
           hls.loadSource(source);
           hls.attachMedia(target);
         } else {
+          stopSource();
           playing.textContent = 'ဒီ browser မှာ HLS player အသုံးပြုလို့ မရပါ။';
         }
       }
@@ -146,6 +176,7 @@
     if (!panel.open) return;
     const selected = list.querySelector('[aria-current="true"]');
     ++attempt;
+    stopSource();
     hls?.destroy();
     hls = null;
     video.pause();

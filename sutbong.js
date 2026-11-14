@@ -8,6 +8,8 @@
   const list = document.getElementById('sutbong-matches');
   const upcomingList = document.getElementById('upcoming-matches');
   const upcomingStatus = document.getElementById('upcoming-status');
+  const search = document.getElementById('match-search');
+  const watch = document.getElementById('watch');
   const kickoffFormat = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Yangon', weekday: 'short', day: 'numeric', month: 'short',
     hour: '2-digit', minute: '2-digit'
@@ -19,6 +21,36 @@
   let hls;
   let attempt = 0;
   let activeTitle;
+  let feedReady = false;
+
+  function searchText(value) {
+    return value.normalize('NFKD').toLowerCase().replace(/\p{Diacritic}/gu, '');
+  }
+
+  function matchSearchText(match) {
+    return searchText([match.home, match.away, match.title, match.league].filter(Boolean).join(' '));
+  }
+
+  function filterMatches() {
+    if (!feedReady) return;
+    const terms = searchText(search.value).trim().split(/\s+/).filter(Boolean);
+    for (const [cards, message, isLive] of [[list, status, true], [upcomingList, upcomingStatus, false]]) {
+      let count = 0;
+      for (const card of cards.children) {
+        card.hidden = !terms.every(term => card.dataset.search.includes(term));
+        if (!card.hidden) count++;
+      }
+      message.textContent = count
+        ? count + (isLive ? (count === 1 ? ' live match' : ' live matches') : ' upcoming')
+        : terms.length ? 'ရှာဖွေမှုနဲ့ ကိုက်ညီတဲ့ပွဲ မတွေ့ပါ။'
+        : isLive ? 'လက်ရှိ Live ပွဲမရှိပါ။' : 'လာမယ့်ပွဲ မတွေ့သေးပါ။';
+    }
+  }
+
+  search.addEventListener('input', () => {
+    if (search.value.trim() && watch.getAttribute('aria-pressed') !== 'true') watch.click();
+    filterMatches();
+  });
 
   function markActiveMatch() {
     for (const card of list.children) {
@@ -139,10 +171,10 @@
 
   function renderUpcoming(matches) {
     const fixtures = matches.filter(match => Number.isFinite(match.kickoff) && match.kickoff * 1000 > Date.now());
-    upcomingStatus.textContent = fixtures.length ? fixtures.length + ' upcoming' : 'လာမယ့်ပွဲ မတွေ့သေးပါ။';
     upcomingList.replaceChildren(...fixtures.map(match => {
       const card = document.createElement('article');
       card.className = 'card upcoming-card';
+      card.dataset.search = matchSearchText(match);
       const league = document.createElement('span');
       league.className = 'match-league';
       league.textContent = match.league || 'Football';
@@ -165,6 +197,7 @@
       const feed = await readJson('./sutbong-matches.json');
       const age = Date.now() - Date.parse(feed.updated);
       if (!Number.isFinite(age) || age > 45 * 60 * 1000) {
+        feedReady = false;
         list.replaceChildren();
         upcomingList.replaceChildren();
         upcomingStatus.textContent = 'လာမယ့်ပွဲစာရင်း အသစ်မရသေးပါ။';
@@ -172,11 +205,10 @@
         return;
       }
       renderUpcoming(feed.upcoming || []);
-      const count = feed.matches.length;
-      status.textContent = count ? count + (count === 1 ? ' live match' : ' live matches') : 'လက်ရှိ Live ပွဲမရှိပါ။';
       list.replaceChildren(...feed.matches.map(match => {
         const button = document.createElement('button');
         button.className = 'card';
+        button.dataset.search = matchSearchText(match);
         const header = document.createElement('span');
         header.className = 'match-header';
         const league = document.createElement('span');
@@ -210,6 +242,8 @@
         return button;
       }));
       markActiveMatch();
+      feedReady = true;
+      filterMatches();
     } catch {
       status.textContent = 'Sutbong ပွဲစာရင်း ယူမရသေးပါ။';
       upcomingStatus.textContent = 'လာမယ့်ပွဲစာရင်း ယူမရသေးပါ။';

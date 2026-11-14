@@ -116,7 +116,12 @@
       list.replaceChildren(...feed.matches.map(match => {
         const button = document.createElement('button');
         button.className = 'card';
-        button.textContent = match.title;
+        if (match.home && match.away) {
+          button.append(teamLabel(match.home, match.homeLogo), teamLabel(match.away, match.awayLogo));
+        } else {
+          button.textContent = match.title;
+        }
+        button.setAttribute('aria-label', match.title);
         button.onclick = () => play(match);
         return button;
       }));

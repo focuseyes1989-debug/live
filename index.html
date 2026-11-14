@@ -7,23 +7,29 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>KAY LIVE SPORT</title>
 <link rel="icon" href="./icon.png">
-<link rel="stylesheet" href="./style.css">
-<script src="./app.js?v=3" defer></script>
+<link rel="stylesheet" href="./style.css?v=4">
+<script src="./app.js?v=4" defer></script>
 <script src="./hls.min.js" defer></script>
-<script src="./sutbong.js" defer></script>
+<script src="./sutbong.js?v=4" defer></script>
 </head>
 <body>
-<header><img src="./icon.png" width="38" height="38" alt=""><strong>KAY LIVE SPORT</strong><a href="../kay-live-sport/">Download apps</a></header>
+<header><div class="header-inner"><img src="./icon.png" width="40" height="40" alt=""><strong>KAY LIVE <span>SPORT</span></strong><button id="theme" type="button">Light theme</button><a href="../kay-live-sport/">Download apps</a></div></header>
 <main>
 <h1>ဘောလုံးပွဲစဉ်များ</h1>
 <nav aria-label="Sections"><button id="watch" aria-pressed="true">Watch</button><button id="scores" aria-pressed="false">Scores</button></nav>
 <section id="watch-view">
-<div class="player" id="player"><p>ကြည့်လိုတဲ့ ထုတ်လွှင့်မှုကို ရွေးပါ</p></div>
+<div class="watch-layout">
+<div class="player-panel">
+<div class="player" id="player"><p>ကြည့်လိုတဲ့ ပွဲကို ရွေးပါ</p></div>
 <p id="playing" role="status"></p>
 <div id="sutbong-channels" aria-label="Commentary"></div>
-<div class="row"><h2>Sutbong Live</h2><button id="sutbong-refresh" type="button">Refresh</button></div>
+</div>
+<section class="matches-panel" aria-labelledby="live-heading">
+<div class="row"><h2 id="live-heading"><span class="live-dot"></span> Sutbong Live</h2><button id="sutbong-refresh" type="button">Refresh</button></div>
 <p id="sutbong-status" role="status">Live ပွဲစာရင်း ယူနေပါတယ်…</p>
 <div id="sutbong-matches" class="grid"></div>
+</section>
+</div>
 <div class="row"><h2>Official broadcasts</h2><select id="state" aria-label="Broadcast status"><option value="live">Live now</option><option value="upcoming">Upcoming</option><option value="replay">Replays</option></select><select id="channel" aria-label="Channel"><option value="">All channels</option></select></div>
 <p id="broadcast-status" role="status">ထုတ်လွှင့်မှုစာရင်း ယူနေပါတယ်…</p>
 <div id="broadcasts" class="grid"></div>

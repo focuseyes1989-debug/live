@@ -28,7 +28,15 @@ def load_matches():
                 channels[channel_id] = anchor.get("nickName") or "Commentator"
         if channels:
             seen.add(key)
-            matches.append({"id": key, "title": f"{home} vs {away}", "channels": channels})
+            matches.append({
+                "id": key,
+                "title": f"{home} vs {away}",
+                "home": home,
+                "away": away,
+                "homeLogo": row.get("home_logo"),
+                "awayLogo": row.get("away_logo"),
+                "channels": channels,
+            })
     return matches
 
 

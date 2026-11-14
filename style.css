@@ -10,7 +10,7 @@
   --accent: #69e7ba;
   --selected: #153e39;
   --live: #ff647a;
-  --watch-bg: #17664f;
+  --watch-bg: #bd2844;
   --watch-text: #fff;
   --crest-bg: #dbe2ed;
   --crest-text: #283c54;
@@ -28,7 +28,7 @@ html[data-theme="light"] {
   --accent: #00644e;
   --selected: #d8f3e8;
   --live: #c52345;
-  --watch-bg: #00644e;
+  --watch-bg: #b91f3e;
   --watch-text: #fff;
   --crest-bg: #e7edf4;
   --crest-text: #314861;

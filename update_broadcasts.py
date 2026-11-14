@@ -8,6 +8,11 @@ CHANNELS = {
     "pyoneplaysports": "Pyone Play Sports",
     "TheAFCHub": "The AFC Hub",
     "OFCFootball": "OFC",
+    "Concacaf": "Concacaf",
+    "GermanFootball": "German Football",
+    "USL": "USL",
+    "BarclaysWSL": "Barclays WSL",
+    "BarclaysWSL2": "Barclays WSL 2",
 }
 
 def objects(value):
@@ -18,6 +23,25 @@ def objects(value):
     elif isinstance(value, list):
         for child in value:
             yield from objects(child)
+
+def check_broadcast(entry):
+    url = "https://www.youtube.com/watch?v=" + entry["id"]
+    with urllib.request.urlopen(url, timeout=10) as response:
+        html = response.read().decode()
+    marker = re.search(r"var ytInitialPlayerResponse\s*=\s*", html)
+    if not marker:
+        return
+    data = json.JSONDecoder().raw_decode(html[marker.end():])[0]
+    details = data.get("microformat", {}).get("playerMicroformatRenderer", {}).get("liveBroadcastDetails", {})
+    if details.get("endTimestamp"):
+        entry["state"] = "replay"
+    elif details.get("isLiveNow"):
+        entry["state"] = "live"
+    elif details.get("startTimestamp"):
+        entry["state"] = "upcoming"
+    if details.get("startTimestamp"):
+        entry["starts"] = details["startTimestamp"]
+
 
 def videos(handle, name):
     request = urllib.request.Request(
@@ -65,6 +89,13 @@ if __name__ == "__main__":
                 errors.append(name)
     if not entries:
         raise SystemExit("All broadcast sources unavailable")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
+        checks = [pool.submit(check_broadcast, entry) for entry in entries if entry["state"] != "replay"]
+        for check in checks:
+            try:
+                check.result()
+            except (OSError, ValueError) as error:
+                print(f"Could not verify a broadcast: {error}")
     feed = {"updated": datetime.now(timezone.utc).isoformat(), "videos": entries, "unavailable": errors}
     Path(__file__).with_name("broadcasts.json").write_text(json.dumps(feed, ensure_ascii=False), encoding="utf-8")
     print(f"{len(entries)} broadcasts, {sum(row['state'] == 'live' for row in entries)} live")

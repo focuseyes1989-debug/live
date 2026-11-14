@@ -1,16 +1,24 @@
 const byId = id => document.getElementById(id);
 
 const themeButton = byId('theme');
+const themeKey = 'kay-shared-theme';
 function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
   themeButton.textContent = theme === 'light' ? 'Dark theme' : 'Light theme';
 }
-try { setTheme(localStorage.getItem('kay-live-theme') === 'light' ? 'light' : 'dark'); }
-catch { setTheme('dark'); }
+try {
+  const saved = localStorage.getItem(themeKey) ?? localStorage.getItem('kay-download-theme') ?? localStorage.getItem('kay-live-theme');
+  setTheme(saved === 'dark' ? 'dark' : 'light');
+} catch {
+  setTheme('light');
+}
+window.addEventListener('storage', event => {
+  if (event.key === themeKey) setTheme(event.newValue === 'dark' ? 'dark' : 'light');
+});
 themeButton.onclick = () => {
   const theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
   setTheme(theme);
-  try { localStorage.setItem('kay-live-theme', theme); } catch {}
+  try { localStorage.setItem(themeKey, theme); } catch {}
 };
 
 function teamLabel(name, logo) {

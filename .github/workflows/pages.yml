@@ -22,10 +22,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Refresh official broadcasts
         run: python3 update_broadcasts.py || echo "::warning::Broadcast refresh failed, using the checked-in snapshot"
+      - name: Refresh Sutbong match list
+        run: python3 update_sutbong.py || echo "::warning::Sutbong refresh failed, using the checked-in snapshot"
       - name: Prepare pages
         run: |
           mkdir _site
-          cp index.html style.css app.js icon.png broadcasts.json _site/
+          cp index.html style.css app.js icon.png broadcasts.json sutbong.js sutbong-matches.json hls.min.js HLS-LICENSE.txt _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -21,6 +21,7 @@
   let attempt = 0;
   let activeTitle;
   let feedReady = false;
+  let liveStale = false;
 
   function searchText(value) {
     return value.normalize('NFKD').toLowerCase().replace(/\p{Diacritic}/gu, '');
@@ -39,7 +40,7 @@
         card.hidden = !terms.every(term => card.dataset.search.includes(term));
         if (!card.hidden) count++;
       }
-      message.textContent = count
+      message.textContent = isLive && liveStale ? 'တိုက်ရိုက်ပွဲစာရင်း အသစ်မရသေးပါ။ Refresh နှိပ်ပြီး ပြန်စမ်းပါ။' : count
         ? count + (isLive ? (count === 1 ? ' live match' : ' live matches') : ' upcoming')
         : terms.length ? 'ရှာဖွေမှုနဲ့ ကိုက်ညီတဲ့ပွဲ မတွေ့ပါ။'
         : isLive ? 'လက်ရှိ Live ပွဲမရှိပါ။' : 'လာမယ့်ပွဲ မတွေ့သေးပါ။';
@@ -191,7 +192,7 @@
     try {
       const feed = await readJson('./sutbong-matches.json');
       const age = Date.now() - Date.parse(feed.updated);
-      if (!Number.isFinite(age) || age > 45 * 60 * 1000) {
+      if (!Number.isFinite(age) || age > 24 * 60 * 60 * 1000) {
         feedReady = false;
         list.replaceChildren();
         upcomingList.replaceChildren();
@@ -199,8 +200,10 @@
         status.textContent = 'Sutbong Live ပွဲစာရင်း အသစ်မရသေးပါ။';
         return;
       }
+      liveStale = age > 45 * 60 * 1000;
       renderUpcoming(feed.upcoming || []);
-      list.replaceChildren(...feed.matches.map(match => {
+      const live = liveStale ? [] : feed.matches;
+      list.replaceChildren(...live.map(match => {
         const button = document.createElement('button');
         button.className = 'card';
         button.dataset.search = matchSearchText(match);

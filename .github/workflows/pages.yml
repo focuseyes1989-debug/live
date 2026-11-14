@@ -21,7 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Refresh Sutbong match list
-        run: python3 update_sutbong.py || echo "::warning::Sutbong refresh failed, using the checked-in snapshot"
+        run: |
+          for attempt in 1 2 3; do
+            if python3 update_sutbong.py; then exit 0; fi
+            if [ "$attempt" -lt 3 ]; then sleep 3; fi
+          done
+          echo "::warning::Sutbong refresh failed after three attempts, using the checked-in snapshot"
       - name: Prepare pages
         run: |
           mkdir _site

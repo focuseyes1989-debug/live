@@ -23,6 +23,7 @@
   let activeTitle;
   let feedReady = false;
   let liveStale = false;
+  let scoreFallback = false;
 
   function searchText(value) {
     return value.normalize('NFKD').toLowerCase().replace(/\p{Diacritic}/gu, '');
@@ -41,7 +42,9 @@
         card.hidden = !terms.every(term => card.dataset.search.includes(term));
         if (!card.hidden) count++;
       }
-      message.textContent = isLive && liveStale ? 'တိုက်ရိုက်ပွဲစာရင်း အသစ်မရသေးပါ။ Refresh နှိပ်ပြီး ပြန်စမ်းပါ။' : count
+      message.textContent = scoreFallback
+        ? 'ESPN · ' + count + (isLive ? ' live · ရမှတ်သာ' : ' upcoming')
+        : isLive && liveStale ? 'တိုက်ရိုက်ပွဲစာရင်း အသစ်မရသေးပါ။ အလိုအလျောက် ပြန်စစ်နေပါတယ်။' : count
         ? count + (isLive ? (count === 1 ? ' live match' : ' live matches') : ' upcoming')
         : terms.length ? 'ရှာဖွေမှုနဲ့ ကိုက်ညီတဲ့ပွဲ မတွေ့ပါ။'
         : isLive ? 'လက်ရှိ Live ပွဲမရှိပါ။' : 'လာမယ့်ပွဲ မတွေ့သေးပါ။';
@@ -219,28 +222,53 @@
   }
 
   let refreshTimer;
+  async function loadScoreFallback() {
+    const day = new Intl.DateTimeFormat('sv-SE', {timeZone: 'Asia/Yangon'}).format().replaceAll('-', '');
+    const data = await readJson('https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard?limit=300&dates=' + day);
+    const leagues = new Map((data.leagues || []).map(league => [league.id, league.name]));
+    const live = [];
+    const upcoming = [];
+    for (const event of data.events) {
+      const game = event.competitions?.[0];
+      const home = game?.competitors.find(team => team.homeAway === 'home');
+      const away = game?.competitors.find(team => team.homeAway === 'away');
+      if (!home?.team?.displayName || !away?.team?.displayName) continue;
+      const match = {
+        title: event.name,
+        home: home.team.displayName, away: away.team.displayName,
+        homeLogo: home.team.logo || home.team.logos?.[0]?.href,
+        awayLogo: away.team.logo || away.team.logos?.[0]?.href,
+        league: leagues.get(event.league?.id || game.leagueId) || event.league?.name,
+        kickoff: Date.parse(event.date) / 1000,
+        homeScore: home.score, awayScore: away.score,
+        clock: event.status.type.shortDetail,
+      };
+      if (event.status.type.state === 'in') live.push(match);
+      if (event.status.type.state === 'pre') upcoming.push(match);
+    }
+    return {matches: live, upcoming: upcoming.sort((a, b) => a.kickoff - b.kickoff)};
+  }
+
   async function load() {
     if (refresh.disabled) return;
     clearTimeout(refreshTimer);
     refresh.disabled = true;
     let retrySoon = true;
     try {
-      const feed = await readJson('./sutbong-matches.json?minute=' + Math.floor(Date.now() / 60000));
+      const feed = await readJson('./sutbong-matches.json?minute=' + Math.floor(Date.now() / 60000)).catch(() => ({}));
       const age = Date.now() - Date.parse(feed.updated);
-      if (!Number.isFinite(age) || age > 24 * 60 * 60 * 1000) {
-        feedReady = false;
-        list.replaceChildren();
-        upcomingList.replaceChildren();
-        upcomingStatus.textContent = 'လာမယ့်ပွဲစာရင်း အသစ်မရသေးပါ။';
-        status.textContent = 'Sutbong Live ပွဲစာရင်း အသစ်မရသေးပါ။';
-        return;
+      liveStale = !Number.isFinite(age) || age > 45 * 60 * 1000;
+      let fallback;
+      if (liveStale) {
+        fallback = await loadScoreFallback().catch(() => null);
       }
-      liveStale = age > 45 * 60 * 1000;
+      scoreFallback = Boolean(fallback);
       retrySoon = liveStale;
-      renderUpcoming(feed.upcoming || []);
-      const live = liveStale ? [] : feed.matches;
+      const scheduled = Number.isFinite(age) && age <= 24 * 60 * 60 * 1000 ? feed.upcoming || [] : [];
+      renderUpcoming(fallback?.upcoming ?? scheduled);
+      const live = liveStale ? fallback?.matches ?? [] : feed.matches;
       list.replaceChildren(...live.map(match => {
-        const button = document.createElement('button');
+        const button = document.createElement(scoreFallback ? 'article' : 'button');
         button.className = 'card';
         button.dataset.search = matchSearchText(match);
         const header = document.createElement('span');
@@ -269,10 +297,11 @@
         playIcon.className = 'match-play';
         playIcon.setAttribute('aria-hidden', 'true');
         playIcon.textContent = '▶  Watch';
-        button.append(header, teams, playIcon);
+        button.append(header, teams);
+        if (!scoreFallback) button.append(playIcon);
         button.setAttribute('aria-label', match.title);
         button.setAttribute('aria-description', [match.league, hasScore ? score : 'Score unavailable', clock.textContent].filter(Boolean).join(', '));
-        button.onclick = () => play(match);
+        if (!scoreFallback) button.onclick = () => play(match);
         return button;
       }));
       markActiveMatch();

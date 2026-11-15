@@ -218,10 +218,14 @@
     }));
   }
 
+  let refreshTimer;
   async function load() {
+    if (refresh.disabled) return;
+    clearTimeout(refreshTimer);
     refresh.disabled = true;
+    let retrySoon = true;
     try {
-      const feed = await readJson('./sutbong-matches.json');
+      const feed = await readJson('./sutbong-matches.json?minute=' + Math.floor(Date.now() / 60000));
       const age = Date.now() - Date.parse(feed.updated);
       if (!Number.isFinite(age) || age > 24 * 60 * 60 * 1000) {
         feedReady = false;
@@ -232,6 +236,7 @@
         return;
       }
       liveStale = age > 45 * 60 * 1000;
+      retrySoon = liveStale;
       renderUpcoming(feed.upcoming || []);
       const live = liveStale ? [] : feed.matches;
       list.replaceChildren(...live.map(match => {
@@ -278,9 +283,9 @@
       upcomingStatus.textContent = 'လာမယ့်ပွဲစာရင်း ယူမရသေးပါ။';
     } finally {
       refresh.disabled = false;
+      refreshTimer = setTimeout(load, (retrySoon ? 1 : 5) * 60 * 1000);
     }
   }
   refresh.onclick = load;
   load();
-  setInterval(load, 5 * 60 * 1000);
 })();

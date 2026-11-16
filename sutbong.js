@@ -43,7 +43,7 @@
         if (!card.hidden) count++;
       }
       message.textContent = scoreFallback
-        ? 'ESPN · ' + count + (isLive ? ' live · ရမှတ်သာ' : ' upcoming')
+        ? 'ESPN · ' + count + (isLive ? ' live · ရမှတ်သာ။ Sutbong ထုတ်လွှင့်မှုစာရင်းကို ပြန်စစ်နေပါတယ်။' : ' upcoming')
         : isLive && liveStale ? 'တိုက်ရိုက်ပွဲစာရင်း အသစ်မရသေးပါ။ အလိုအလျောက် ပြန်စစ်နေပါတယ်။' : count
         ? count + (isLive ? (count === 1 ? ' live match' : ' live matches') : ' upcoming')
         : terms.length ? 'ရှာဖွေမှုနဲ့ ကိုက်ညီတဲ့ပွဲ မတွေ့ပါ။'

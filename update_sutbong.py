@@ -34,8 +34,16 @@ def load_matches():
             continue
         channels = {}
         details = row.get("match_data") or {}
+        for anchor in details.get("anchors") or []:
+            channel_id = str(anchor.get("uid") or anchor.get("id") or "")
+            if channel_id.isdigit():
+                channels[channel_id] = anchor.get("nickName") or "Commentator"
+        kickoff = str(row.get("time", ""))
         teams = {
             "id": key,
+            "scoreId": row.get("ls_id"),
+            "kickoff": int(kickoff) if kickoff.isdigit() else None,
+            "channels": channels,
             "title": f"{home} vs {away}",
             "home": home,
             "away": away,
@@ -44,15 +52,10 @@ def load_matches():
             "league": details.get("competition_full") or details.get("competition_vi"),
         }
         if str(row.get("is_live")).lower() not in {"1", "true"}:
-            kickoff = str(row.get("time", ""))
             if str(row.get("status_id")) in {"0", "1"} and kickoff.isdigit() and int(kickoff) > now:
-                upcoming.append({**teams, "kickoff": int(kickoff)})
+                upcoming.append(teams)
                 seen.add(key)
             continue
-        for anchor in details.get("anchors") or []:
-            channel_id = str(anchor.get("uid") or anchor.get("id") or "")
-            if channel_id.isdigit():
-                channels[channel_id] = anchor.get("nickName") or "Commentator"
         if channels:
             seen.add(key)
             matches.append({
@@ -61,7 +64,6 @@ def load_matches():
                 "awayScore": row.get("away_score"),
                 "clock": minutes.get(key),
                 "halfTime": str(row.get("status_id")) == "3",
-                "channels": channels,
             })
     return matches, sorted(upcoming, key=lambda match: match["kickoff"])
 

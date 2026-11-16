@@ -16,6 +16,7 @@
   const controls = document.getElementById('sutbong-channels');
   const refresh = document.getElementById('sutbong-refresh');
   const roomIndex = 'https://biz.vnres.co/api/live/livingRoom';
+  const realtimeUrl = 'https://api.sportbo.live/api/v1/matchs/realtime';
   let video;
   let hls;
   let attempt = 0;
@@ -222,6 +223,31 @@
   }
 
   let refreshTimer;
+  function updateFromRealtime(feed, rows) {
+    const scores = new Map(rows.filter(row => Array.isArray(row.score)).map(row => [String(row.id), row.score]));
+    const originalLive = feed.matches || [];
+    const live = [];
+    const upcoming = [];
+    for (const match of [...originalLive, ...(feed.upcoming || [])]) {
+      const score = scores.get(String(match.scoreId));
+      const state = Number(score?.[1]);
+      const kickoffAge = Date.now() - match.kickoff * 1000;
+      if ([2, 3, 4, 5, 7].includes(state) && kickoffAge >= -120000 && kickoffAge <= 4 * 3600000) {
+        if (Object.keys(match.channels || {}).length) {
+          live.push({
+            ...match, homeScore: score[2]?.[0], awayScore: score[3]?.[0],
+            halfTime: state === 3, clock: liveStale ? null : match.clock,
+          });
+        }
+      } else if (originalLive.includes(match)) {
+        if (!liveStale && ![8, 9, 10, 11, 12, 13].includes(state)) live.push(match);
+      } else if (![8, 9, 10, 11, 12, 13].includes(state)) {
+        upcoming.push(match);
+      }
+    }
+    return {live, upcoming};
+  }
+
   async function loadScoreFallback() {
     const day = new Intl.DateTimeFormat('sv-SE', {timeZone: 'Asia/Yangon'}).format().replaceAll('-', '');
     const data = await readJson('https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard?limit=300&dates=' + day);
@@ -255,18 +281,24 @@
     refresh.disabled = true;
     let retrySoon = true;
     try {
-      const feed = await readJson('./sutbong-matches.json?minute=' + Math.floor(Date.now() / 60000)).catch(() => ({}));
+      const [feed, realtime] = await Promise.all([
+        readJson('./sutbong-matches.json?minute=' + Math.floor(Date.now() / 60000)).catch(() => ({})),
+        readJson(realtimeUrl).catch(() => null),
+      ]);
       const age = Date.now() - Date.parse(feed.updated);
       liveStale = !Number.isFinite(age) || age > 45 * 60 * 1000;
+      const current = Array.isArray(realtime?.result) && age <= 24 * 60 * 60 * 1000
+        ? updateFromRealtime(feed, realtime.result) : null;
       let fallback;
-      if (liveStale) {
+      if (liveStale && !current?.live.length) {
         fallback = await loadScoreFallback().catch(() => null);
       }
       scoreFallback = Boolean(fallback);
+      if (current?.live.length) liveStale = false;
       retrySoon = liveStale;
       const scheduled = Number.isFinite(age) && age <= 24 * 60 * 60 * 1000 ? feed.upcoming || [] : [];
-      renderUpcoming(fallback?.upcoming ?? scheduled);
-      const live = liveStale ? fallback?.matches ?? [] : feed.matches;
+      renderUpcoming(fallback?.upcoming ?? current?.upcoming ?? scheduled);
+      const live = fallback?.matches ?? current?.live ?? (liveStale ? [] : feed.matches);
       list.replaceChildren(...live.map(match => {
         const button = document.createElement(scoreFallback ? 'article' : 'button');
         button.className = 'card';
@@ -312,7 +344,7 @@
       upcomingStatus.textContent = 'လာမယ့်ပွဲစာရင်း ယူမရသေးပါ။';
     } finally {
       refresh.disabled = false;
-      refreshTimer = setTimeout(load, (retrySoon ? 1 : 5) * 60 * 1000);
+      refreshTimer = setTimeout(load, retrySoon ? 60000 : 30000);
     }
   }
   refresh.onclick = load;

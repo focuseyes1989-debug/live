@@ -46,9 +46,28 @@ jobs:
               print(f"Could not reuse published snapshot: {error}")
           PY
       - name: Prepare pages
+        env:
+          SUTBONG_CATALOG_URL: ${{ vars.SUTBONG_CATALOG_URL }}
         run: |
           mkdir _site
           cp index.html style.css app.js icon.png sutbong.js sutbong-matches.json hls.min.js HLS-LICENSE.txt _site/
+          if [ -n "$SUTBONG_CATALOG_URL" ]; then
+            python3 - <<'PY'
+          import html
+          import os
+          from pathlib import Path
+          from urllib.parse import urlsplit
+
+          endpoint = os.environ["SUTBONG_CATALOG_URL"]
+          url = urlsplit(endpoint)
+          if url.scheme != "https" or not url.hostname or url.path != "/matches.json" or url.username or url.query or url.fragment:
+              raise ValueError("SUTBONG_CATALOG_URL must be an HTTPS /matches.json endpoint")
+          page = Path("_site/index.html")
+          markup = page.read_text(encoding="utf-8")
+          page.write_text(markup.replace('name="sutbong-catalog" content=""',
+                                         f'name="sutbong-catalog" content="{html.escape(endpoint)}"'), encoding="utf-8")
+          PY
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

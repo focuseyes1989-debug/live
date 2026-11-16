@@ -17,6 +17,7 @@
   const refresh = document.getElementById('sutbong-refresh');
   const roomIndex = 'https://biz.vnres.co/api/live/livingRoom';
   const realtimeUrl = 'https://api.sportbo.live/api/v1/matchs/realtime';
+  const catalogUrl = document.querySelector('meta[name="sutbong-catalog"]')?.content;
   let video;
   let hls;
   let attempt = 0;
@@ -74,8 +75,8 @@
     }
   }
 
-  async function readJson(url) {
-    const response = await fetch(url, { cache: 'no-cache', signal: AbortSignal.timeout(12000) });
+  async function readJson(url, timeout = 12000) {
+    const response = await fetch(url, { cache: 'no-cache', signal: AbortSignal.timeout(timeout) });
     if (!response.ok) throw new Error('HTTP ' + response.status);
     return response.json();
   }
@@ -223,6 +224,16 @@
   }
 
   let refreshTimer;
+  async function readCatalog() {
+    const snapshotUrl = './sutbong-matches.json?minute=' + Math.floor(Date.now() / 60000);
+    if (catalogUrl) {
+      const fresh = await readJson(catalogUrl, 8500).catch(() => null);
+      const age = Date.now() - Date.parse(fresh?.updated);
+      if (Array.isArray(fresh?.matches) && Array.isArray(fresh.upcoming) &&
+          age >= -60000 && age < 120000) return fresh;
+    }
+    return readJson(snapshotUrl).catch(() => ({}));
+  }
   function updateFromRealtime(feed, rows) {
     const scores = new Map(rows.filter(row => Array.isArray(row.score)).map(row => [String(row.id), row.score]));
     const originalLive = feed.matches || [];
@@ -282,7 +293,7 @@
     let retrySoon = true;
     try {
       const [feed, realtime] = await Promise.all([
-        readJson('./sutbong-matches.json?minute=' + Math.floor(Date.now() / 60000)).catch(() => ({})),
+        readCatalog(),
         readJson(realtimeUrl).catch(() => null),
       ]);
       const age = Date.now() - Date.parse(feed.updated);

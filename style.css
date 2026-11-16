@@ -108,7 +108,7 @@ button:hover, button[aria-pressed="true"] { background: var(--selected); border-
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .header-inner nav { display: flex; gap: 4px; }
 #theme { border-color: transparent; background: transparent; color: var(--muted); white-space: nowrap; }
-#watch, #theme:hover {
+#theme:hover {
   color: var(--nav-accent);
   background: var(--nav-search);
 }
@@ -186,7 +186,7 @@ p { color: var(--muted); line-height: 1.6; }
   .header-search { grid-area: 3 / 1 / 4 / -1; }
 }
 
-#watch { padding: .62rem .85rem; border-radius: 9px; font-size: .88rem; font-weight: 600; text-decoration: none; }
+#watch { padding: .6rem .85rem; color: var(--nav-accent); font-size: .88rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
 #watch:hover { text-decoration: underline; }
 #watch-view { scroll-margin-top: 145px; }
 #close-player {

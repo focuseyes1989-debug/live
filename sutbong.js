@@ -43,7 +43,8 @@
   let activeTitle;
   let feedReady = false;
   let liveStale = false;
-  let scoreFallback = false;
+  let savedCatalogTime;
+  const availableStreams = new Set();
 
   function showDataProgress(detail) {
     if (panel.open || dataProgress.open) return () => {};
@@ -69,12 +70,14 @@
         card.hidden = !terms.every(term => card.dataset.search.includes(term));
         if (!card.hidden) count++;
       }
-      message.textContent = scoreFallback
-        ? 'ESPN · ' + count + (isLive ? ' live · ရမှတ်သာ။ Sutbong ထုတ်လွှင့်မှုစာရင်းကို ပြန်စစ်နေပါတယ်။' : ' upcoming')
-        : isLive && liveStale ? 'တိုက်ရိုက်ပွဲစာရင်း အသစ်မရသေးပါ။ အလိုအလျောက် ပြန်စစ်နေပါတယ်။' : count
+      const summary = count
         ? count + (isLive ? (count === 1 ? ' live match' : ' live matches') : ' upcoming')
         : terms.length ? 'ရှာဖွေမှုနဲ့ ကိုက်ညီတဲ့ပွဲ မတွေ့ပါ။'
         : isLive ? 'လက်ရှိ Live ပွဲမရှိပါ။' : 'လာမယ့်ပွဲ မတွေ့သေးပါ။';
+      message.textContent = isLive && savedCatalogTime
+        ? summary + ' · နောက်ဆုံးရရှိချိန် ' + kickoffFormat.format(savedCatalogTime)
+        : isLive && liveStale ? 'တိုက်ရိုက်ပွဲစာရင်း အသစ်မရသေးပါ။ အလိုအလျောက် ပြန်စစ်နေပါတယ်။'
+        : summary;
     }
   }
 
@@ -106,6 +109,41 @@
     return response.json();
   }
 
+  function matchingRooms(rooms, match) {
+    return Array.isArray(rooms) ? rooms.filter(room =>
+      Object.hasOwn(match.channels || {}, String(room?.id)) && playlist(room?.stream)) : [];
+  }
+
+  async function backendRooms(match) {
+    if (!catalogUrl || !/^\d+$/.test(match.id)) return [];
+    const endpoint = new URL('/rooms.json', catalogUrl);
+    endpoint.searchParams.set('match', match.id);
+    return matchingRooms(await readJson(endpoint, 6000), match);
+  }
+
+  function showStreamAvailability(card, available) {
+    const label = card.querySelector('.match-play');
+    label.classList.toggle('waiting', !available);
+    label.textContent = available ? '▶  Watch' : 'Stream စောင့်နေပါတယ်';
+    card.setAttribute('aria-disabled', String(!available));
+  }
+
+  async function checkStreams(entries) {
+    if (!entries.length) return;
+    const directory = await readJson(roomIndex, 3000).catch(() => null);
+    for (let offset = 0; offset < entries.length; offset += 4) {
+      await Promise.all(entries.slice(offset, offset + 4).map(async ([match, card]) => {
+        if (!card.isConnected) return;
+        const available = matchingRooms(directory, match).length > 0 ||
+          (await backendRooms(match).catch(() => [])).length > 0;
+        if (!card.isConnected) return;
+        if (available) availableStreams.add(match.id);
+        else availableStreams.delete(match.id);
+        showStreamAvailability(card, available);
+      }));
+    }
+  }
+
   function openPlayer(title) {
     const token = ++attempt;
     stopSource();
@@ -133,16 +171,10 @@
     const {token, target} = openPlayer(match.title);
     playing.textContent = match.title + ' · Connecting…';
     try {
-      let usedWorker = false;
-      let rooms = await readJson(roomIndex, catalogUrl ? 4000 : 12000).catch(() => null);
+      let rooms = matchingRooms(await readJson(roomIndex, catalogUrl ? 4000 : 12000).catch(() => null), match);
       if (token !== attempt) return;
-      if (catalogUrl && !rooms?.some(room => Object.hasOwn(match.channels, String(room.id)) && playlist(room.stream))) {
-        const endpoint = new URL('/rooms.json', catalogUrl);
-        endpoint.searchParams.set('match', match.id);
-        rooms = await readJson(endpoint);
-        usedWorker = true;
-      }
-      if (!rooms) throw new Error('Stream directory unavailable');
+      const usedWorker = !rooms.length && Boolean(catalogUrl);
+      if (usedWorker) rooms = await backendRooms(match);
       if (token !== attempt) return;
       const routes = new Map(rooms.map(room => [String(room.id), playlist(room.stream)]));
       const channels = Object.entries(match.channels).filter(([id]) => routes.get(id));
@@ -421,7 +453,7 @@
           });
         }
       } else if (originalLive.includes(match)) {
-        if (!liveStale && ![8, 9, 10, 11, 12, 13].includes(state)) live.push(match);
+        if (![8, 9, 10, 11, 12, 13].includes(state)) live.push({...match, stale: liveStale});
       } else if (![8, 9, 10, 11, 12, 13].includes(state)) {
         upcoming.push(match);
       }
@@ -429,31 +461,57 @@
     return {live, upcoming};
   }
 
-  async function loadScoreFallback() {
+  async function loadEspnScores() {
     const day = new Intl.DateTimeFormat('sv-SE', {timeZone: 'Asia/Yangon'}).format().replaceAll('-', '');
-    const data = await readJson('https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard?limit=300&dates=' + day);
-    const leagues = new Map((data.leagues || []).map(league => [league.id, league.name]));
+    const data = await readJson('https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard?limit=300&dates=' + day, 5000);
+    return (data.events || []).flatMap(event => {
+      const game = event.competitions?.[0];
+      const home = game?.competitors?.find(team => team.homeAway === 'home');
+      const away = game?.competitors?.find(team => team.homeAway === 'away');
+      const type = event.status?.type;
+      const kickoff = Date.parse(event.date) / 1000;
+      if (!home?.team?.displayName || !away?.team?.displayName || !type || !Number.isFinite(kickoff)) return [];
+      return [{home: home.team.displayName, away: away.team.displayName, kickoff,
+        state: type.state, clock: type.shortDetail, halfTime: type.name === 'STATUS_HALFTIME',
+        homeScore: home.score, awayScore: away.score}];
+    });
+  }
+
+  function scoreTeam(name) {
+    return searchText(name).replace(/[^\p{L}\p{N}]/gu, '');
+  }
+
+  function matchEspnScore(match, scores) {
+    if (!match.home || !match.away || !Number.isFinite(Number(match.kickoff))) return null;
+    const home = scoreTeam(match.home), away = scoreTeam(match.away);
+    const matches = scores.flatMap(score => {
+      if (Math.abs(match.kickoff - score.kickoff) > 15 * 60) return [];
+      const first = scoreTeam(score.home), second = scoreTeam(score.away);
+      if (home === first && away === second) return [score];
+      if (home === second && away === first) return [{...score, homeScore: score.awayScore, awayScore: score.homeScore}];
+      return [];
+    });
+    return matches.length === 1 ? matches[0] : null;
+  }
+
+  function mergeEspn(catalog, scores, stale) {
     const live = [];
     const upcoming = [];
-    for (const event of data.events) {
-      const game = event.competitions?.[0];
-      const home = game?.competitors.find(team => team.homeAway === 'home');
-      const away = game?.competitors.find(team => team.homeAway === 'away');
-      if (!home?.team?.displayName || !away?.team?.displayName) continue;
-      const match = {
-        title: event.name,
-        home: home.team.displayName, away: away.team.displayName,
-        homeLogo: home.team.logo || home.team.logos?.[0]?.href,
-        awayLogo: away.team.logo || away.team.logos?.[0]?.href,
-        league: leagues.get(event.league?.id || game.leagueId) || event.league?.name,
-        kickoff: Date.parse(event.date) / 1000,
-        homeScore: home.score, awayScore: away.score,
-        clock: event.status.type.shortDetail,
-      };
-      if (event.status.type.state === 'in') live.push(match);
-      if (event.status.type.state === 'pre') upcoming.push(match);
+    for (const [matches, listedLive] of [[catalog.live, true], [catalog.upcoming, false]]) {
+      for (const match of matches) {
+        const score = matchEspnScore(match, scores);
+        if (score?.state === 'post') continue;
+        if (score?.state === 'in') {
+          const {homeScore, awayScore, clock, halfTime} = score;
+          live.push({...match, homeScore: homeScore ?? match.homeScore, awayScore: awayScore ?? match.awayScore, clock, halfTime});
+        } else if (listedLive && !stale && !match.stale) {
+          live.push(match);
+        } else if (!listedLive) {
+          upcoming.push(match);
+        }
+      }
     }
-    return {matches: live, upcoming: upcoming.sort((a, b) => a.kickoff - b.kickoff)};
+    return {live, upcoming};
   }
 
   async function load(showProgress = false) {
@@ -464,26 +522,26 @@
     refresh.disabled = true;
     let retrySoon = true;
     try {
-      const [{feed, backup}, realtime] = await Promise.all([
+      const [{feed, backup}, realtime, scores] = await Promise.all([
         readCatalog(),
         readJson(realtimeUrl, 5000).catch(() => null),
+        loadEspnScores().catch(() => []),
       ]);
       const age = catalogAge(feed);
       liveStale = !Number.isFinite(age) || age > 45 * 60 * 1000;
       const current = Array.isArray(realtime?.result) && age <= 24 * 60 * 60 * 1000
         ? updateFromRealtime(feed, realtime.result) : null;
-      let fallback;
-      if (liveStale && !current?.live.length) {
-        fallback = await loadScoreFallback().catch(() => null);
-      }
-      scoreFallback = Boolean(fallback);
-      if (current?.live.length) liveStale = false;
-      retrySoon = backup || liveStale;
-      const scheduled = Number.isFinite(age) && age <= 24 * 60 * 60 * 1000 ? feed.upcoming || [] : [];
-      renderUpcoming(fallback?.upcoming ?? current?.upcoming ?? scheduled);
-      const live = fallback?.matches ?? current?.live ?? (liveStale ? [] : feed.matches);
-      list.replaceChildren(...live.map(match => {
-        const button = document.createElement(scoreFallback ? 'article' : 'button');
+      savedCatalogTime = backup && Number.isFinite(age) ? new Date(feed.updated) : null;
+      const recentCatalog = Number.isFinite(age) && age <= 24 * 60 * 60 * 1000;
+      const listed = {live: recentCatalog ? feed.matches || [] : [], upcoming: recentCatalog ? feed.upcoming || [] : []};
+      const {live, upcoming} = mergeEspn(current || listed, scores, liveStale && !current);
+      retrySoon = backup || liveStale || live.some(match => !availableStreams.has(match.id));
+      renderUpcoming(upcoming);
+      const liveIds = new Set(live.map(match => match.id));
+      for (const id of availableStreams) if (!liveIds.has(id)) availableStreams.delete(id);
+      const entries = live.map(match => {
+        const button = document.createElement('button');
+        button.type = 'button';
         button.className = 'card';
         button.dataset.search = matchSearchText(match);
         const header = document.createElement('span');
@@ -510,15 +568,15 @@
         }
         const playIcon = document.createElement('span');
         playIcon.className = 'match-play';
-        playIcon.setAttribute('aria-hidden', 'true');
-        playIcon.textContent = '▶  Watch';
-        button.append(header, teams);
-        if (!scoreFallback) button.append(playIcon);
+        button.append(header, teams, playIcon);
+        showStreamAvailability(button, availableStreams.has(match.id));
         button.setAttribute('aria-label', match.title);
         button.setAttribute('aria-description', [match.league, hasScore ? score : 'Score unavailable', clock.textContent].filter(Boolean).join(', '));
-        if (!scoreFallback) button.onclick = () => play(match);
-        return button;
-      }));
+        button.onclick = () => { if (availableStreams.has(match.id)) play(match); };
+        return [match, button];
+      });
+      list.replaceChildren(...entries.map(([, card]) => card));
+      void checkStreams(entries);
       markActiveMatch();
       feedReady = true;
       filterMatches();

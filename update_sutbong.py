@@ -1,8 +1,10 @@
 import json
+import os
 import re
 from datetime import datetime, timezone
 from html import unescape
 from pathlib import Path
+from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 
@@ -68,8 +70,26 @@ def load_matches(timeout=20):
     return matches, sorted(upcoming, key=lambda match: match["kickoff"])
 
 
-if __name__ == "__main__":
+def snapshot_feed():
+    endpoint = os.environ.get("SUTBONG_CATALOG_URL", "")
+    url = urlsplit(endpoint)
+    if (url.scheme == "https" and url.hostname and url.path == "/matches.json"
+            and not (url.username or url.query or url.fragment)):
+        try:
+            with urlopen(endpoint, timeout=8) as response:
+                feed = json.load(response)
+            age = (datetime.now(timezone.utc) - datetime.fromisoformat(feed["updated"])).total_seconds()
+            if (-60 <= age < 120 and isinstance(feed["matches"], list)
+                    and isinstance(feed["upcoming"], list)):
+                return feed
+        except (OSError, ValueError, TypeError, KeyError):
+            pass
     matches, upcoming = load_matches()
-    feed = {"updated": datetime.now(timezone.utc).isoformat(), "matches": matches, "upcoming": upcoming}
+    return {"updated": datetime.now(timezone.utc).isoformat(),
+            "matches": matches, "upcoming": upcoming}
+
+
+if __name__ == "__main__":
+    feed = snapshot_feed()
     Path(__file__).with_name("sutbong-matches.json").write_text(json.dumps(feed, ensure_ascii=False), encoding="utf-8")
-    print(f"{len(matches)} Sutbong live matches, {len(upcoming)} upcoming")
+    print(f"{len(feed['matches'])} Sutbong live matches, {len(feed['upcoming'])} upcoming")

@@ -21,6 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Refresh Sutbong match list
+        env:
+          SUTBONG_CATALOG_URL: ${{ vars.SUTBONG_CATALOG_URL }}
         run: |
           for attempt in 1 2 3; do
             if python3 update_sutbong.py; then exit 0; fi

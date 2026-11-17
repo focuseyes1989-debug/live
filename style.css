@@ -300,3 +300,6 @@ header .header-inner .nav-download, header .header-inner .header-download, heade
   header .header-inner nav { column-gap: 6px; flex-wrap: wrap; }
   header .header-inner #watch, header .header-inner .header-download { margin-inline-end: 0; padding-inline: .4rem; }
 }
+
+.match-play.waiting { background: var(--surface); color: var(--muted); }
+#sutbong-matches .card[aria-disabled="true"] { cursor: default; }

@@ -129,16 +129,46 @@ body:has(.player-panel[open], #data-progress[open]) { overflow: hidden; }
 #data-progress {
   width: min(360px, calc(100% - 32px));
   margin: auto;
-  padding: 18px;
+  padding: clamp(18px, 5vw, 26px);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 20px;
   background: var(--surface);
   color: var(--text);
+  box-shadow: 0 20px 64px rgba(4, 6, 14, .26);
 }
-#data-progress::backdrop { background: rgba(4, 6, 14, .55); }
-#data-progress h2 { margin: 0 0 8px; }
-#data-progress p { color: var(--muted); }
-#data-progress progress { display: block; width: 100%; height: 8px; margin-top: 14px; accent-color: var(--accent); }
+#data-progress::backdrop { background: rgba(4, 6, 14, .48); }
+#data-progress h2 { margin: 0; font-size: 1.05rem; line-height: 1.6; }
+#data-progress p { margin: 4px 0 0; color: var(--muted); font-size: .86rem; line-height: 1.65; }
+.data-progress-track {
+  position: relative;
+  overflow: hidden;
+  height: 7px;
+  margin-top: 20px;
+  border-radius: 999px;
+  background: var(--control);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.data-progress-track progress {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+}
+.data-progress-track span {
+  display: block;
+  width: 38%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--nav-accent), var(--accent));
+  animation: data-progress-sweep 1.45s ease-in-out infinite;
+}
+@keyframes data-progress-sweep {
+  from { transform: translateX(-105%); }
+  to { transform: translateX(270%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .data-progress-track span { animation: none; margin-inline: auto; }
+}
 #playing:empty { display: none; }
 #sutbong-channels:not(:empty) { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 245px), 1fr)); gap: 10px; }

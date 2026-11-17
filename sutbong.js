@@ -9,9 +9,17 @@
   const upcomingList = document.getElementById('upcoming-matches');
   const upcomingStatus = document.getElementById('upcoming-status');
   const search = document.getElementById('match-search');
+  const localZone = new Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const localZoneLabels = {
+    'Asia/Yangon': 'Myanmar Time',
+    'Asia/Rangoon': 'Myanmar Time',
+    'Asia/Bangkok': 'Thailand Time',
+  };
+  const zoneLabel = localZoneLabels[localZone];
   const kickoffFormat = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Yangon', weekday: 'short', day: 'numeric', month: 'short',
-    hour: '2-digit', minute: '2-digit'
+    weekday: 'short', day: 'numeric', month: 'short',
+    hour: '2-digit', minute: '2-digit',
+    ...(zoneLabel ? {} : {timeZoneName: 'long'}),
   });
   const controls = document.getElementById('sutbong-channels');
   const refresh = document.getElementById('sutbong-refresh');
@@ -217,7 +225,7 @@
       const kickoff = new Date(match.kickoff * 1000);
       time.className = 'match-kickoff';
       time.dateTime = kickoff.toISOString();
-      time.textContent = kickoffFormat.format(kickoff) + ' MMT';
+      time.textContent = kickoffFormat.format(kickoff) + (zoneLabel ? ' ' + zoneLabel : '');
       card.append(league, teams, time);
       return card;
     }));

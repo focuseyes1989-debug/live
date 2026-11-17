@@ -380,15 +380,29 @@
   }
 
   let refreshTimer;
+  let lastCatalog;
+
+  function catalogAge(feed) {
+    return Date.now() - Date.parse(feed?.updated);
+  }
+
   async function readCatalog() {
     const snapshotUrl = './sutbong-matches.json?minute=' + Math.floor(Date.now() / 60000);
     if (catalogUrl) {
       const fresh = await readJson(catalogUrl, 8500).catch(() => null);
-      const age = Date.now() - Date.parse(fresh?.updated);
+      const age = catalogAge(fresh);
       if (Array.isArray(fresh?.matches) && Array.isArray(fresh.upcoming) &&
-          age >= -60000 && age < 120000) return fresh;
+          age >= -60000 && age < 120000) {
+        lastCatalog = fresh;
+        return {feed: fresh, backup: false};
+      }
     }
-    return readJson(snapshotUrl).catch(() => ({}));
+    const snapshot = await readJson(snapshotUrl, 5000).catch(() => null);
+    const previousAge = catalogAge(lastCatalog);
+    const snapshotAge = catalogAge(snapshot);
+    const keepPrevious = previousAge >= -60000 && previousAge < 5 * 60000 &&
+      (!Number.isFinite(snapshotAge) || previousAge < snapshotAge);
+    return {feed: (keepPrevious ? lastCatalog : snapshot) || {}, backup: true};
   }
   function updateFromRealtime(feed, rows) {
     const scores = new Map(rows.filter(row => Array.isArray(row.score)).map(row => [String(row.id), row.score]));
@@ -450,11 +464,11 @@
     refresh.disabled = true;
     let retrySoon = true;
     try {
-      const [feed, realtime] = await Promise.all([
+      const [{feed, backup}, realtime] = await Promise.all([
         readCatalog(),
-        readJson(realtimeUrl).catch(() => null),
+        readJson(realtimeUrl, 5000).catch(() => null),
       ]);
-      const age = Date.now() - Date.parse(feed.updated);
+      const age = catalogAge(feed);
       liveStale = !Number.isFinite(age) || age > 45 * 60 * 1000;
       const current = Array.isArray(realtime?.result) && age <= 24 * 60 * 60 * 1000
         ? updateFromRealtime(feed, realtime.result) : null;
@@ -464,7 +478,7 @@
       }
       scoreFallback = Boolean(fallback);
       if (current?.live.length) liveStale = false;
-      retrySoon = liveStale;
+      retrySoon = backup || liveStale;
       const scheduled = Number.isFinite(age) && age <= 24 * 60 * 60 * 1000 ? feed.upcoming || [] : [];
       renderUpcoming(fallback?.upcoming ?? current?.upcoming ?? scheduled);
       const live = fallback?.matches ?? current?.live ?? (liveStale ? [] : feed.matches);
@@ -514,7 +528,7 @@
     } finally {
       refresh.disabled = false;
       endProgress();
-      refreshTimer = setTimeout(load, retrySoon ? 60000 : 30000);
+      refreshTimer = setTimeout(load, retrySoon ? 10000 : 30000);
     }
   }
   refresh.onclick = () => load(true);

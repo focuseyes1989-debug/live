@@ -1,5 +1,6 @@
 const webOrigin = 'https://focuseyes1989-debug.github.io';
 const source = 'https://sutbong.pro/';
+const roomDirectory = 'https://biz.vnres.co/api/live/livingRoom';
 const responseHeaders = {
   'Access-Control-Allow-Origin': webOrigin,
   'Cache-Control': 'public, max-age=20',
@@ -46,9 +47,30 @@ export function parseCatalog(html, now = Date.now()) {
   return {updated: new Date(now).toISOString(), matches, upcoming};
 }
 
-export default {
-  async fetch(request, _env, context) {
+const worker = {
+  async fetch(request, env, context) {
     const url = new URL(request.url);
+    if (url.pathname === '/rooms.json' && request.method === 'GET') {
+      const id = url.searchParams.get('match');
+      const headers = {...responseHeaders, 'Cache-Control': 'no-store'};
+      if (!/^\d{1,20}$/.test(id || '')) {
+        return Response.json({error: 'Invalid match ID'}, {status: 400, headers});
+      }
+      try {
+        const catalog = await worker.fetch(new Request(new URL('/matches.json', url)), env, context);
+        if (!catalog.ok) throw new Error('Catalog unavailable');
+        const {matches} = await catalog.json();
+        const match = matches.find(item => item.id === id);
+        if (!match) return Response.json([], {headers});
+        const upstream = await fetch(roomDirectory, {signal: AbortSignal.timeout(6000), redirect: 'error'});
+        if (!upstream.ok) throw new Error('Room directory unavailable');
+        const rooms = await upstream.json();
+        return Response.json(rooms.filter(room => Object.hasOwn(match.channels, String(room.id)))
+          .map(({id, stream}) => ({id, stream})), {headers});
+      } catch {
+        return Response.json({error: 'Stream directory unavailable'}, {status: 503, headers});
+      }
+    }
     if (url.pathname !== '/matches.json' || request.method !== 'GET') {
       return new Response('Not found', {status: 404});
     }
@@ -71,3 +93,5 @@ export default {
     }
   },
 };
+
+export default worker;

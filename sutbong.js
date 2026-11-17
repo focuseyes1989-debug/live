@@ -106,7 +106,16 @@
     if (!panel.open) panel.showModal();
     playing.textContent = match.title + ' · Connecting…';
     try {
-      const rooms = await readJson(roomIndex);
+      let usedWorker = false;
+      let rooms = await readJson(roomIndex, catalogUrl ? 4000 : 12000).catch(() => null);
+      if (token !== attempt) return;
+      if (catalogUrl && !rooms?.some(room => Object.hasOwn(match.channels, String(room.id)) && playlist(room.stream))) {
+        const endpoint = new URL('/rooms.json', catalogUrl);
+        endpoint.searchParams.set('match', match.id);
+        rooms = await readJson(endpoint);
+        usedWorker = true;
+      }
+      if (!rooms) throw new Error('Stream directory unavailable');
       if (token !== attempt) return;
       const routes = new Map(rooms.map(room => [String(room.id), playlist(room.stream)]));
       const channels = Object.entries(match.channels).filter(([id]) => routes.get(id));
@@ -114,7 +123,9 @@
         playing.textContent = match.title + ' · လက်ရှိ ထုတ်လွှင့်နေတဲ့ source မရှိသေးပါ။';
         return;
       }
-      if (preferred) channels.sort(([a], [b]) => Number(b === preferred) - Number(a === preferred));
+      const priority = id => (id === preferred ? 2 : 0) +
+        (usedWorker && new URL(routes.get(id)).hostname === 'pull.niur.live' ? 1 : 0);
+      if (preferred || usedWorker) channels.sort(([a], [b]) => priority(b) - priority(a));
       controls.replaceChildren(...channels.map(([id, name]) => {
         const button = document.createElement('button');
         button.textContent = name;

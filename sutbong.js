@@ -31,6 +31,8 @@
   const tvStatus = document.getElementById('myanmar-tv-status');
   const tvNav = document.getElementById('myanmar-tv-nav');
   const watchNav = document.getElementById('watch');
+  const dataProgress = document.getElementById('data-progress');
+  const dataProgressDetail = document.getElementById('data-progress-detail');
   let tvLoaded = false;
   let tvLoading = false;
   let tvTrigger;
@@ -42,6 +44,13 @@
   let feedReady = false;
   let liveStale = false;
   let scoreFallback = false;
+
+  function showDataProgress(detail) {
+    if (panel.open || dataProgress.open) return () => {};
+    dataProgressDetail.textContent = detail;
+    dataProgress.showModal();
+    return () => { if (dataProgress.open && dataProgressDetail.textContent === detail) dataProgress.close(); };
+  }
 
   function searchText(value) {
     return value.normalize('NFKD').toLowerCase().replace(/\p{Diacritic}/gu, '');
@@ -254,6 +263,7 @@
     if (tvLoaded || tvLoading) return;
     tvLoading = true;
     tvStatus.textContent = 'Channel စာရင်း ယူနေပါတယ်…';
+    const endProgress = showDataProgress('Myanmar TV channel စာရင်း');
     try {
       const channels = await readJson('./myanmar-tv-channels.json');
       tvList.replaceChildren(...channels.map(channel => {
@@ -282,6 +292,7 @@
       tvStatus.replaceChildren('Channel စာရင်း ယူမရသေးပါ။ ', retry);
     } finally {
       tvLoading = false;
+      endProgress();
     }
   }
 
@@ -431,9 +442,11 @@
     return {matches: live, upcoming: upcoming.sort((a, b) => a.kickoff - b.kickoff)};
   }
 
-  async function load() {
+  async function load(showProgress = false) {
     if (refresh.disabled) return;
     clearTimeout(refreshTimer);
+    const endProgress = showProgress && tvSection.hidden
+      ? showDataProgress('Live နဲ့ လာမယ့်ပွဲစာရင်း') : () => {};
     refresh.disabled = true;
     let retrySoon = true;
     try {
@@ -500,10 +513,11 @@
       upcomingStatus.textContent = 'လာမယ့်ပွဲစာရင်း ယူမရသေးပါ။';
     } finally {
       refresh.disabled = false;
+      endProgress();
       refreshTimer = setTimeout(load, retrySoon ? 60000 : 30000);
     }
   }
-  refresh.onclick = load;
+  refresh.onclick = () => load(true);
   setInterval(() => tickCountdowns(), 1000);
-  load();
+  load(true);
 })();

@@ -118,7 +118,7 @@ button:hover, button[aria-pressed="true"] { background: var(--selected); border-
   overflow: auto;
 }
 .player-panel::backdrop { background: rgba(4, 6, 14, .78); }
-body:has(.player-panel[open]) { overflow: hidden; }
+body:has(.player-panel[open], #data-progress[open]) { overflow: hidden; }
 .row.player-heading { margin: 0 0 10px; }
 .player-panel, .matches-panel { min-width: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 12px; }
 .player { aspect-ratio: 16 / 9; min-height: 0; background: #080e18; border-radius: 11px; display: grid; place-items: center; overflow: hidden; }
@@ -126,6 +126,19 @@ body:has(.player-panel[open]) { overflow: hidden; }
 .player video { object-fit: contain; min-width: 0; min-height: 0; }
 .player p { color: #bdcde0; text-align: center; padding: 12px; }
 .vpn-notice { margin: 10px 0 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--control); color: var(--text); font-size: .85rem; line-height: 1.5; }
+#data-progress {
+  width: min(360px, calc(100% - 32px));
+  margin: auto;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+}
+#data-progress::backdrop { background: rgba(4, 6, 14, .55); }
+#data-progress h2 { margin: 0 0 8px; }
+#data-progress p { color: var(--muted); }
+#data-progress progress { display: block; width: 100%; height: 8px; margin-top: 14px; accent-color: var(--accent); }
 #playing:empty { display: none; }
 #sutbong-channels:not(:empty) { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 245px), 1fr)); gap: 10px; }

@@ -50,7 +50,8 @@ jobs:
           SUTBONG_CATALOG_URL: ${{ vars.SUTBONG_CATALOG_URL }}
         run: |
           mkdir _site
-          cp index.html style.css app.js icon.png sutbong.js sutbong-matches.json hls.min.js HLS-LICENSE.txt _site/
+          cp index.html style.css app.js icon.png sutbong.js sutbong-matches.json hls.min.js HLS-LICENSE.txt myanmar-tv-channels.json _site/
+          cp -r tv-channels _site/
           if [ -n "$SUTBONG_CATALOG_URL" ]; then
             python3 - <<'PY'
           import html

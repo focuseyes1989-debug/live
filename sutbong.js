@@ -26,6 +26,14 @@
   const roomIndex = 'https://biz.vnres.co/api/live/livingRoom';
   const realtimeUrl = 'https://api.sportbo.live/api/v1/matchs/realtime';
   const catalogUrl = document.querySelector('meta[name="sutbong-catalog"]')?.content;
+  const tvSection = document.getElementById('myanmar-tv');
+  const tvList = document.getElementById('myanmar-tv-channels');
+  const tvStatus = document.getElementById('myanmar-tv-status');
+  const tvNav = document.getElementById('myanmar-tv-nav');
+  const watchNav = document.getElementById('watch');
+  let tvLoaded = false;
+  let tvLoading = false;
+  let tvTrigger;
   let video;
   let hls;
   let attempt = 0;
@@ -89,21 +97,31 @@
     return response.json();
   }
 
-  async function play(match, preferred) {
-    activeTitle = match.title;
-    markActiveMatch();
+  function openPlayer(title) {
     const token = ++attempt;
     stopSource();
     hls?.destroy();
     hls = null;
+    if (video) {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    }
     controls.replaceChildren();
     video = document.createElement('video');
     video.controls = true;
     video.playsInline = true;
-    const target = video;
-    player.replaceChildren(target);
-    playerTitle.textContent = match.title;
+    player.replaceChildren(video);
+    playerTitle.textContent = title;
     if (!panel.open) panel.showModal();
+    return {token, target: video};
+  }
+
+  async function play(match, preferred) {
+    tvTrigger = undefined;
+    activeTitle = match.title;
+    markActiveMatch();
+    const {token, target} = openPlayer(match.title);
     playing.textContent = match.title + ' · Connecting…';
     try {
       let usedWorker = false;
@@ -146,49 +164,7 @@
         for (const button of controls.children) button.setAttribute('aria-pressed', button.dataset.channel === id);
         const source = routes.get(id);
         playing.textContent = match.title + ' · ' + (index ? 'Trying another source…' : 'Connecting…') + ' · ' + name;
-        let active = true;
-        let timer;
-        const next = () => {
-          if (active && token === attempt) tryChannel(index + 1);
-        };
-        const startTimer = () => {
-          clearTimeout(timer);
-          timer = setTimeout(next, 12000);
-        };
-        stopSource = () => {
-          active = false;
-          clearTimeout(timer);
-          target.onplaying = target.onwaiting = target.onerror = null;
-        };
-        target.onerror = next;
-        target.onplaying = () => {
-          clearTimeout(timer);
-          playing.textContent = match.title + ' · LIVE · ' + name;
-        };
-        target.onwaiting = () => { if (!target.paused) startTimer(); };
-        startTimer();
-        const start = () => target.play().catch(error => {
-          if (!active || token !== attempt) return;
-          if (error.name === 'NotAllowedError') {
-            clearTimeout(timer);
-            playing.textContent = match.title + ' · Play နှိပ်ပါ';
-          } else if (error.name !== 'AbortError') next();
-        });
-        if (target.canPlayType('application/vnd.apple.mpegurl')) {
-          target.onerror = next;
-          target.src = source;
-          start();
-        } else if (window.Hls?.isSupported()) {
-          hls = new Hls();
-          const current = hls;
-          hls.on(Hls.Events.ERROR, (_, info) => { if (info.fatal && hls === current) next(); });
-          hls.on(Hls.Events.MANIFEST_PARSED, start);
-          hls.loadSource(source);
-          hls.attachMedia(target);
-        } else {
-          stopSource();
-          playing.textContent = 'ဒီ browser မှာ HLS player အသုံးပြုလို့ မရပါ။';
-        }
+        playSource(target, token, source, () => tryChannel(index + 1), match.title + ' · LIVE · ' + name);
       }
       tryChannel(0);
     } catch {
@@ -196,9 +172,135 @@
     }
   }
 
+  function playSource(target, token, source, onFailure, liveText) {
+    let active = true;
+    let timer;
+    const next = () => {
+      if (active && token === attempt) onFailure();
+    };
+    const startTimer = () => {
+      clearTimeout(timer);
+      timer = setTimeout(next, 12000);
+    };
+    stopSource = () => {
+      active = false;
+      clearTimeout(timer);
+      target.onplaying = target.onwaiting = target.onerror = null;
+    };
+    target.onerror = next;
+    target.onplaying = () => {
+      clearTimeout(timer);
+      playing.textContent = liveText;
+    };
+    target.onwaiting = () => { if (!target.paused) startTimer(); };
+    startTimer();
+    const start = () => target.play().catch(error => {
+      if (!active || token !== attempt) return;
+      if (error.name === 'NotAllowedError') {
+        clearTimeout(timer);
+        playing.textContent = playerTitle.textContent + ' · Play နှိပ်ပါ';
+      } else if (error.name !== 'AbortError') next();
+    });
+    if (target.canPlayType('application/vnd.apple.mpegurl')) {
+      target.onerror = next;
+      target.src = source;
+      start();
+    } else if (window.Hls?.isSupported()) {
+      hls = new Hls();
+      const current = hls;
+      hls.on(Hls.Events.ERROR, (_, info) => { if (info.fatal && hls === current) next(); });
+      hls.on(Hls.Events.MANIFEST_PARSED, start);
+      hls.loadSource(source);
+      hls.attachMedia(target);
+    } else {
+      stopSource();
+      playing.textContent = 'ဒီ browser မှာ HLS player အသုံးပြုလို့ မရပါ။';
+    }
+  }
+
+  function playTv(channel, trigger) {
+    tvTrigger = trigger;
+    const {token, target} = openPlayer(channel.name);
+    const routes = [channel.stream, ...(channel.fallbacks || [])];
+    const sourceLink = document.createElement('a');
+    sourceLink.id = 'myanmar-tv-source';
+    sourceLink.href = channel.id === 'mrtv4'
+      ? 'https://www.pyoneplay.com/livetv/01gt74kf63194hkch7pbsp46he'
+      : 'https://www.myanmartvchannels.com/channels/' + channel.id + '/';
+    sourceLink.target = '_blank';
+    sourceLink.rel = 'noopener noreferrer';
+    sourceLink.textContent = 'Open channel website';
+    controls.append(sourceLink);
+
+    function tryRoute(index) {
+      if (token !== attempt) return;
+      stopSource();
+      hls?.destroy();
+      hls = null;
+      target.pause();
+      target.removeAttribute('src');
+      target.load();
+      if (index >= routes.length) {
+        playing.textContent = 'Channel stream ဖွင့်မရသေးပါ။ Channel website မှာ ကြည့်နိုင်ပါတယ်။';
+        return;
+      }
+      playing.textContent = index ? 'Trying another source…' : 'Connecting…';
+      playSource(target, token, routes[index], () => tryRoute(index + 1), channel.name + ' · LIVE');
+    }
+    tryRoute(0);
+  }
+
+  async function loadTvChannels() {
+    if (tvLoaded || tvLoading) return;
+    tvLoading = true;
+    tvStatus.textContent = 'Channel စာရင်း ယူနေပါတယ်…';
+    try {
+      const channels = await readJson('./myanmar-tv-channels.json');
+      tvList.replaceChildren(...channels.map(channel => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'card';
+        const logo = document.createElement('img');
+        logo.src = './tv-channels/' + channel.id + '.webp';
+        logo.alt = '';
+        logo.loading = 'lazy';
+        const name = document.createElement('strong');
+        name.textContent = channel.name;
+        const label = document.createElement('small');
+        label.textContent = 'Watch live';
+        card.append(logo, name, label);
+        card.onclick = () => playTv(channel, card);
+        return card;
+      }));
+      tvStatus.textContent = channels.length + ' channels';
+      tvLoaded = true;
+    } catch {
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.textContent = 'Retry';
+      retry.onclick = loadTvChannels;
+      tvStatus.replaceChildren('Channel စာရင်း ယူမရသေးပါ။ ', retry);
+    } finally {
+      tvLoading = false;
+    }
+  }
+
+  function renderView() {
+    const tv = location.hash === '#myanmar-tv';
+    tvSection.hidden = !tv;
+    document.getElementById('watch-view').hidden = tv;
+    document.getElementById('football-heading').hidden = tv;
+    search.closest('.header-search').hidden = tv;
+    (tv ? tvNav : watchNav).setAttribute('aria-current', 'page');
+    (tv ? watchNav : tvNav).removeAttribute('aria-current');
+    if (tv) loadTvChannels();
+  }
+  window.addEventListener('hashchange', renderView);
+  renderView();
+
   function closePlayer() {
     if (!panel.open) return;
-    const selected = list.querySelector('[aria-current="true"]');
+    const selected = tvTrigger || list.querySelector('[aria-current="true"]');
     ++attempt;
     stopSource();
     hls?.destroy();
@@ -212,6 +314,7 @@
     activeTitle = undefined;
     markActiveMatch();
     panel.close();
+    tvTrigger = undefined;
     (selected || refresh).focus();
   }
   close.onclick = closePlayer;

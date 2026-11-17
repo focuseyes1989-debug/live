@@ -244,3 +244,16 @@ header .header-inner .nav-download, header .header-inner .header-download, heade
   header .header-inner .nav-watch, header .header-inner #watch { margin-inline-end: auto; }
   header .header-search { grid-area: 3 / 1; }
 }
+
+#myanmar-tv-nav { color: var(--text); font-size: .88rem; font-weight: 600; white-space: nowrap; text-decoration: none; }
+#myanmar-tv-nav[aria-current="page"], #watch[aria-current="page"] { color: var(--nav-accent); text-decoration: underline; text-underline-offset: 4px; }
+#myanmar-tv-heading { margin: 0; }
+#myanmar-tv-channels { grid-template-columns: repeat(auto-fill, minmax(min(100%, 135px), 1fr)); }
+#myanmar-tv-channels .card { display: grid; justify-items: center; align-content: start; gap: 8px; text-align: center; }
+#myanmar-tv-channels img { width: 68px; height: 68px; object-fit: contain; border-radius: 8px; }
+#myanmar-tv-channels small { color: var(--muted); }
+#myanmar-tv-source { display: inline-block; margin-top: 8px; color: var(--nav-accent); }
+@media (max-width: 400px) {
+  header .header-inner nav { column-gap: 6px; flex-wrap: wrap; }
+  header .header-inner #watch, header .header-inner .header-download { margin-inline-end: 0; padding-inline: .4rem; }
+}

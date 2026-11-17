@@ -130,6 +130,8 @@ body:has(.player-panel[open]) { overflow: hidden; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 245px), 1fr)); gap: 10px; }
 .matches-panel .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 225px), 1fr)); gap: 12px; }
 .match-kickoff { text-align: center; font-size: .78rem; color: var(--muted); }
+.match-timing { display: grid; gap: 4px; text-align: center; }
+.match-countdown { color: var(--accent); font-size: .84rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .card { display: block; text-align: left; width: 100%; color: var(--text); background: var(--control); border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow-wrap: anywhere; }
 .card.upcoming-card { display: grid; gap: 12px; }
 #sutbong-matches .card {

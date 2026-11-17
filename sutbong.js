@@ -209,8 +209,24 @@
     closePlayer();
   });
 
+  let countdowns = [];
+  function tickCountdowns(now = Date.now()) {
+    for (const {label, kickoff} of countdowns) {
+      const seconds = Math.ceil((kickoff - now) / 1000);
+      if (seconds <= 0) {
+        label.textContent = 'Awaiting live status';
+        continue;
+      }
+      const days = Math.floor(seconds / 86400);
+      const clock = [Math.floor(seconds / 3600) % 24, Math.floor(seconds / 60) % 60, seconds % 60]
+        .map(value => String(value).padStart(2, '0')).join(':');
+      label.textContent = 'Starts in ' + (days ? days + 'd ' : '') + clock;
+    }
+  }
+
   function renderUpcoming(matches) {
     const fixtures = matches.filter(match => Number.isFinite(match.kickoff) && match.kickoff * 1000 > Date.now());
+    countdowns = [];
     upcomingList.replaceChildren(...fixtures.map(match => {
       const card = document.createElement('article');
       card.className = 'card upcoming-card';
@@ -226,9 +242,16 @@
       time.className = 'match-kickoff';
       time.dateTime = kickoff.toISOString();
       time.textContent = kickoffFormat.format(kickoff) + (zoneLabel ? ' ' + zoneLabel : '');
-      card.append(league, teams, time);
+      const timing = document.createElement('div');
+      timing.className = 'match-timing';
+      const label = document.createElement('span');
+      label.className = 'match-countdown';
+      countdowns.push({label, kickoff: kickoff.getTime()});
+      timing.append(label, time);
+      card.append(league, teams, timing);
       return card;
     }));
+    tickCountdowns();
   }
 
   let refreshTimer;
@@ -367,5 +390,6 @@
     }
   }
   refresh.onclick = load;
+  setInterval(() => tickCountdowns(), 1000);
   load();
 })();

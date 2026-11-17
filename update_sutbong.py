@@ -6,9 +6,9 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 
-def load_matches():
+def load_matches(timeout=20):
     request = Request("https://sutbong.pro/", headers={"User-Agent": "Mozilla/5.0"})
-    with urlopen(request, timeout=20) as response:
+    with urlopen(request, timeout=timeout) as response:
         html = response.read(4_000_000).decode("utf-8")
     block = re.search(r"""<script\b[^>]*\bid=["']matches-data["'][^>]*>(.*?)</script>""", html, re.S)
     if not block:

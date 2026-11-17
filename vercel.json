@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    {"source": "/matches.json", "destination": "/api/catalog"},
+    {"source": "/rooms.json", "destination": "/api/catalog"}
+  ]
+}

@@ -2,12 +2,19 @@
 <html lang="my">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d1e2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="KAY Live">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon.png">
+<script src="./mobile.js?v=1" defer></script>
 <meta name="description" content="KAY LIVE SPORT live football and match scores">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>KAY LIVE SPORT</title>
 <link rel="icon" href="./icon.png">
-<link rel="stylesheet" href="./style.css?v=29">
+<link rel="stylesheet" href="./style.css?v=30">
 <script src="./app.js?v=10" defer></script>
 <script src="./hls.min.js" defer></script>
 <meta name="sutbong-catalog" content="">
@@ -32,7 +39,7 @@
 </div>
 </dialog>
 <dialog class="player-panel" id="player-panel" aria-labelledby="player-title">
-<div class="row player-heading"><h2 id="player-title">Live player</h2><button id="close-player" type="button" aria-label="Close player" title="Close player" autofocus><span aria-hidden="true">×</span></button></div>
+<div class="row player-heading"><h2 id="player-title">Live player</h2><button id="player-fullscreen" type="button" aria-label="Fullscreen" title="Fullscreen">⛶</button><button id="close-player" type="button" aria-label="Close player" title="Close player" autofocus><span aria-hidden="true">×</span></button></div>
 <div class="player" id="player"></div>
 <p class="vpn-notice" lang="my">မြန်မာနိုင်ငံအတွင်း VPN လိုနိုင်ပါသည်</p>
 <p id="playing" role="status"></p>
@@ -57,6 +64,12 @@
 <div class="row"><div><h1 id="myanmar-tv-heading">Myanmar TV</h1><p id="myanmar-tv-status" role="status"></p></div></div>
 <div id="myanmar-tv-channels" class="grid"></div>
 </section>
+<button id="install-kay" type="button" hidden>Home Screen မှာ KAY ထည့်ရန်</button>
+<dialog id="install-help" aria-labelledby="install-help-title">
+<h2 id="install-help-title">KAY ကို Home Screen မှာ ထည့်ပါ</h2>
+<p>Safari နဲ့ ဒီစာမျက်နှာကို ဖွင့်ပါ။ Share → Add to Home Screen ကို နှိပ်ပါ။ Open as Web App ရှိရင် ဖွင့်ထားပြီး Add နှိပ်ပါ။</p>
+<button id="close-install" type="button">Close</button>
+</dialog>
 </main>
 </body>
 </html>

@@ -104,18 +104,23 @@
   }
 
   async function readJson(url, timeout = 12000) {
-    const response = await fetch(url, { cache: 'no-cache', signal: AbortSignal.timeout(timeout) });
-    if (!response.ok) throw new Error('HTTP ' + response.status);
-    return response.json();
+    // AbortSignal.timeout is absent in older iPhone Safari versions.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url, { cache: 'no-cache', signal: controller.signal });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      return await response.json();
+    } finally { clearTimeout(timer); }
   }
 
   function matchingRooms(rooms, match) {
     return Array.isArray(rooms) ? rooms.filter(room =>
-      Object.hasOwn(match.channels || {}, String(room?.id)) && playlist(room?.stream)) : [];
+      Object.prototype.hasOwnProperty.call(match.channels || {}, String(room?.id)) && playlist(room?.stream)) : [];
   }
 
   async function backendRooms(match) {
-    if (!catalogUrl || !/^\d+$/.test(match.id)) return [];
+    if (!catalogUrl || !/^\d+$/.test(match.id)) throw new Error('Stream lookup unavailable');
     const endpoint = new URL('/rooms.json', catalogUrl);
     endpoint.searchParams.set('match', match.id);
     return matchingRooms(await readJson(endpoint, 6000), match);
@@ -124,8 +129,8 @@
   function showStreamAvailability(card, available) {
     const label = card.querySelector('.match-play');
     label.classList.toggle('waiting', !available);
-    label.textContent = available ? '▶  Watch' : 'Stream စောင့်နေပါတယ်';
-    card.setAttribute('aria-disabled', String(!available));
+    label.textContent = available ? '▶  Watch' : '▶  Stream ပြန်စမ်းရန်';
+    card.removeAttribute('aria-disabled');
   }
 
   async function checkStreams(entries) {
@@ -572,7 +577,8 @@
         showStreamAvailability(button, availableStreams.has(match.id));
         button.setAttribute('aria-label', match.title);
         button.setAttribute('aria-description', [match.league, hasScore ? score : 'Score unavailable', clock.textContent].filter(Boolean).join(', '));
-        button.onclick = () => { if (availableStreams.has(match.id)) play(match); };
+        // A failed background probe must not block a user-initiated retry.
+        button.onclick = () => play(match);
         return [match, button];
       });
       list.replaceChildren(...entries.map(([, card]) => card));
